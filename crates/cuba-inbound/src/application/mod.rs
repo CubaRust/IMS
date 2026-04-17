@@ -11,6 +11,7 @@ use validator::Validate;
 use cuba_inventory::{
     CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput,
 };
+use cuba_preissue::PreissueService;
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
@@ -130,6 +131,7 @@ pub struct SubmitInboundResult {
 pub struct InboundService {
     repo: Arc<dyn InboundRepository>,
     inventory: InventoryService,
+    preissue: PreissueService,
 }
 
 impl InboundService {
@@ -137,7 +139,8 @@ impl InboundService {
     pub fn new(pool: PgPool) -> Self {
         Self {
             repo: Arc::new(PgInboundRepository::new(pool.clone())),
-            inventory: InventoryService::new(pool),
+            inventory: InventoryService::new(pool.clone()),
+            preissue: PreissueService::new(pool),
         }
     }
 
@@ -235,6 +238,16 @@ impl InboundService {
         };
 
         let committed = self.inventory.commit(ctx, cmd).await?;
+
+        // 异常先发自动冲销:对每行带 related_preissue_line_id 的,调 preissue.close_line
+        let target_loc_for_close = head.loc_id.unwrap_or_default();
+        for l in &head.lines {
+            if let Some(preissue_line_id) = l.related_preissue_line_id {
+                self.preissue
+                    .close_line(ctx, preissue_line_id, l.qty, head.wh_id, target_loc_for_close)
+                    .await?;
+            }
+        }
 
         // 单据状态推进
         self.repo

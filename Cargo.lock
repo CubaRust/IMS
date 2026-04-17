@@ -609,6 +609,7 @@ dependencies = [
  "cuba-inbound",
  "cuba-inventory",
  "cuba-outbound",
+ "cuba-preissue",
  "cuba-shared",
  "cuba-warehouse",
  "serde",
@@ -685,8 +686,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
- "bigdecimal",
+ "cuba-inventory",
  "cuba-shared",
  "cuba-testkit",
  "rust_decimal",
@@ -697,7 +697,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "uuid",
  "validator",
 ]
 
@@ -742,6 +741,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "cuba-inventory",
+ "cuba-preissue",
  "cuba-shared",
  "cuba-testkit",
  "rust_decimal",
@@ -824,8 +824,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
- "bigdecimal",
+ "cuba-inventory",
  "cuba-shared",
  "cuba-testkit",
  "rust_decimal",
@@ -836,7 +835,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "uuid",
  "validator",
 ]
 
@@ -890,8 +888,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
- "bigdecimal",
+ "cuba-inventory",
  "cuba-shared",
  "cuba-testkit",
  "rust_decimal",
@@ -902,7 +899,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "uuid",
  "validator",
 ]
 
