@@ -7,7 +7,9 @@ license.workspace = true
 [dependencies]
 cuba-shared = { workspace = true }
 cuba-bootstrap = { workspace = true }
+cuba-api = { workspace = true }
 
+axum = { workspace = true }
 sqlx = { workspace = true }
 tokio = { workspace = true }
 time = { workspace = true }

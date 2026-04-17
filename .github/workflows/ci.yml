@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  SQLX_OFFLINE: "true"
+
+jobs:
+  # -- 静态检查 --------------------------------------------------------------
+  check:
+    name: fmt + clippy + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: fmt check
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --tests -- -D warnings
+
+      - name: build
+        run: cargo build --workspace --all-targets
+
+  # -- 单测(不需要 DB) -----------------------------------------------------
+  unit-tests:
+    name: unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: run unit tests(排除 e2e)
+        run: cargo test --workspace --exclude cuba-e2e --lib
+
+  # -- e2e 集成测试:需要 Docker(runner 默认带) ---------------------------
+  e2e-tests:
+    name: e2e (testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: verify docker
+        run: docker version
+
+      - name: run e2e
+        env:
+          RUST_LOG: "warn,cuba_=info"
+          CUBA_TEST_LOG: "warn"
+        run: cargo test -p cuba-e2e -- --test-threads=1
+
+  # -- SQL 迁移校验:独立起 pg,跑一遍 migrations,再执行 verify.sql ---------
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      pg:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cuba
+          POSTGRES_PASSWORD: cuba
+          POSTGRES_DB: cuba_ims
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U cuba"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: apply migrations
+        env:
+          PGPASSWORD: cuba
+        run: |
+          for f in migrations/*.sql; do
+            echo ">>> applying $f"
+            psql -h localhost -U cuba -d cuba_ims -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: verify schema
+        env:
+          PGPASSWORD: cuba
+        run: |
+          if [ -f scripts/verify.sql ]; then
+            psql -h localhost -U cuba -d cuba_ims -v ON_ERROR_STOP=1 -f scripts/verify.sql
+          fi

@@ -8,6 +8,7 @@
 #![deny(unsafe_code)]
 
 pub mod fixtures;
+pub mod http;
 
 use std::sync::Arc;
 use std::time::Duration;
