@@ -25,10 +25,10 @@ members = [
 ]
 
 [workspace.package]
-edition = "2024"
+edition = "2021"
 version = "0.1.0"
 license = "Proprietary"
-rust-version = "1.95"
+rust-version = "1.75"
 
 [workspace.dependencies]
 # --- Web framework ---
@@ -46,20 +46,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # --- Database ---
-#sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "time", "json", "migrate", "macros", "bigdecimal"] }
-
-# --- Database ---
-sqlx = { version = "0.8", default-features = false, features = [
-    "runtime-tokio-rustls", # 异步运行时
-    "postgres",             # 只保留需要的数据库
-    "macros",               # 编译期 SQL 检查
-    "uuid",                 # UUID 支持
-    "time",                 # 时间类型支持
-    "json",                 # JSONB 支持
-    "migrate",              # 自动迁移工具
-    "rust_decimal",         # 💡 替换或增加：更高性能且对 PG 更友好的定点数支持
-    "bigdecimal"            # 如果你已经大量使用 bigdecimal，可以暂时保留
-] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "time", "json", "migrate", "macros", "bigdecimal"] }
 
 # --- Common types ---
 uuid = { version = "1", features = ["v4", "serde"] }

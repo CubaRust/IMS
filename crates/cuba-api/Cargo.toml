@@ -19,9 +19,9 @@ cuba-preissue = { workspace = true }
 cuba-defect = { workspace = true }
 cuba-scrap = { workspace = true }
 cuba-recovery = { workspace = true }
-# cuba-customer-return = { workspace = true }
-# cuba-supplier-return = { workspace = true }
-# cuba-pmc = { workspace = true }
+cuba-customer-return = { workspace = true }
+cuba-supplier-return = { workspace = true }
+cuba-pmc = { workspace = true }
 # cuba-stocktake = { workspace = true }
 # cuba-reporting = { workspace = true }
 # cuba-inbound = { workspace = true }

@@ -30,6 +30,7 @@ pub mod identity;
 pub mod inbound_outbound;
 pub mod inventory;
 pub mod preissue;
+pub mod returns_pmc;
 pub mod warehouse;
 
 /// 构建根 Router
@@ -47,6 +48,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(inbound_outbound::routes())
         .merge(preissue::routes())
         .merge(exception::routes())
+        .merge(returns_pmc::routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 

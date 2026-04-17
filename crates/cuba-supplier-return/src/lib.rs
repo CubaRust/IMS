@@ -1,9 +1,20 @@
 //! cuba-supplier-return
 //!
-//! 本 crate 暂为占位,后续按 DDD 分层填充:
-//! - `domain` : 实体、值对象、领域服务、领域事件
-//! - `application` : command / query handler + DTO
-//! - `infrastructure` : sqlx repo 实现
-//! - `interface` : HTTP DTO(实际 handler 在 cuba-api)
+//! 退供商单 (`wms_supplier_return_h/d`)。本质是从源仓位(通常不良仓 BAD)OUT 掉物料,送回供应商。
+//!
+//! ## 流程
+//! 1. `create`:DRAFT
+//! 2. `submit`:OUT from (source_wh/loc, source_status) → 库存减少
+//! 3. `void`:仅 DRAFT/SUBMITTED
 
 #![deny(unsafe_code)]
+
+pub mod repo;
+pub mod service;
+
+pub use repo::{PgSupplierReturnRepository, SupplierReturnRepository};
+pub use service::{
+    CreateSupplierReturnCommand, CreateSupplierReturnLine, QuerySupplierReturns,
+    SubmitSupplierReturnResult, SupplierReturnHeadView, SupplierReturnLineView,
+    SupplierReturnService,
+};
