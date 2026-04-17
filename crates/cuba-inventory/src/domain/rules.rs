@@ -34,8 +34,8 @@ use cuba_shared::{
     types::{IoFlag, StockStatus, TxnType},
 };
 
-pub use super::{
-    errors::{InventoryError},
+use super::{
+    errors::{self, InventoryError},
     model::{StockDelta, StockLocator, TxnHead, TxnLine},
 };
 
@@ -228,7 +228,6 @@ mod tests {
 
     use super::*;
     use crate::domain::model::TxnSide;
-    use crate::errors;
 
     fn head(txn_type: TxnType, source: Option<TxnSide>, target: Option<TxnSide>) -> TxnHead {
         TxnHead {

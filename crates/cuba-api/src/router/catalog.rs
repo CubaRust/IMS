@@ -11,7 +11,7 @@
 
 use axum::{
     extract::{Extension, Path, Query, State},
-    routing::get,
+    routing::{get, post, put},
     Json, Router,
 };
 

@@ -14,7 +14,6 @@ use cuba_inventory::{
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
-    serde_helpers::date_format,
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
@@ -86,7 +85,6 @@ pub struct CreateOutboundCommand {
     pub wh_id: i64,
     /// 源仓位(单据级)
     pub loc_id: i64,
-    #[serde(deserialize_with = "date_format::deserialize")]
     pub outbound_date: Date,
     #[serde(default)]
     pub remark: Option<String>,

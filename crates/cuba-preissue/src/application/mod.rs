@@ -20,51 +20,6 @@ use cuba_shared::{
 use crate::domain::PreissueError;
 use crate::infrastructure::repository::{PgPreissueRepository, PreissueRepository};
 
-// -- Date format helper ------------------------------------------------------
-
-mod date_format {
-    use serde::{self, Deserialize, Deserializer};
-    use time::Date;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Date, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Date::parse(&s, &time::format_description::well_known::Iso8601::DEFAULT)
-            .or_else(|_| {
-                // 尝试简单的 YYYY-MM-DD 格式
-                let format = time::macros::format_description!("[year]-[month]-[day]");
-                Date::parse(&s, &format)
-            })
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-mod optional_date_format {
-    use serde::{self, Deserialize, Deserializer};
-    use time::Date;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Date>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let opt = Option::<String>::deserialize(deserializer)?;
-        match opt {
-            None => Ok(None),
-            Some(s) => {
-                let date = Date::parse(&s, &time::format_description::well_known::Iso8601::DEFAULT)
-                    .or_else(|_| {
-                        let format = time::macros::format_description!("[year]-[month]-[day]");
-                        Date::parse(&s, &format)
-                    })
-                    .map_err(serde::de::Error::custom)?;
-                Ok(Some(date))
-            }
-        }
-    }
-}
-
 // -- View --------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,11 +74,10 @@ pub struct CreatePreissueCommand {
     pub process_name: Option<String>,
     #[serde(default)]
     pub workshop_name: Option<String>,
-    #[serde(deserialize_with = "date_format::deserialize")]
     pub issue_date: Date,
     #[validate(length(min = 1, max = 4000))]
     pub reason: String,
-    #[serde(default, deserialize_with = "optional_date_format::deserialize")]
+    #[serde(default)]
     pub expected_close_date: Option<Date>,
     #[serde(default)]
     pub remark: Option<String>,

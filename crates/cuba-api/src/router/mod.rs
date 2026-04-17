@@ -12,7 +12,7 @@
 //!   inbound/...                 -- 入库(后续)
 //! ```
 
-use axum::{http::StatusCode, middleware as axum_mw, routing::get, Router};
+use axum::{middleware as axum_mw, routing::get, Router};
 use tower_http::{
     compression::CompressionLayer, cors::CorsLayer, timeout::TimeoutLayer, trace::TraceLayer,
 };
@@ -31,6 +31,7 @@ pub mod inbound_outbound;
 pub mod inventory;
 pub mod preissue;
 pub mod returns_pmc;
+pub mod stocktake_report;
 pub mod warehouse;
 
 /// 构建根 Router
@@ -49,6 +50,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(preissue::routes())
         .merge(exception::routes())
         .merge(returns_pmc::routes())
+        .merge(stocktake_report::routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 
@@ -60,10 +62,7 @@ pub fn build_router(state: AppState) -> Router {
         .fallback(not_found_fallback)
         .layer(axum_mw::from_fn(trace_id))
         .layer(TraceLayer::new_for_http())
-        .layer(TimeoutLayer::with_status_code(
-            StatusCode::REQUEST_TIMEOUT,
-            std::time::Duration::from_secs(30),
-        ))
+        .layer(TimeoutLayer::new(std::time::Duration::from_secs(30)))
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive()) // TODO: prod 改白名单
         .with_state(state)

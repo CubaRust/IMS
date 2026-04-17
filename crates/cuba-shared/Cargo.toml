@@ -19,4 +19,3 @@ jsonwebtoken = { workspace = true }
 bcrypt = { workspace = true }
 axum = { workspace = true }
 sqlx = { workspace = true }
-anyhow = "1.0.102"

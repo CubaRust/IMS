@@ -20,7 +20,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use cuba_shared::{
-    error::AppError,
+    error::{AppError, ErrorBody},
     result::ApiSuccess,
 };
 
@@ -35,22 +35,13 @@ pub struct Envelope<T> {
     pub trace_id: Option<String>,
 }
 
-/// Newtype wrapper for ApiSuccess to satisfy orphan rules
-pub struct ApiSuccessResponse<T>(pub ApiSuccess<T>);
-
-impl<T> From<ApiSuccess<T>> for ApiSuccessResponse<T> {
-    fn from(success: ApiSuccess<T>) -> Self {
-        Self(success)
-    }
-}
-
-impl<T: Serialize> IntoResponse for ApiSuccessResponse<T> {
+impl<T: Serialize> IntoResponse for ApiSuccess<T> {
     fn into_response(self) -> Response {
         let body = Envelope {
-            code: self.0.code,
-            message: self.0.message.to_string(),
-            data: Some(self.0.data),
-            trace_id: self.0.trace_id,
+            code: self.code,
+            message: self.message.to_string(),
+            data: Some(self.data),
+            trace_id: self.trace_id,
         };
         (StatusCode::OK, Json(body)).into_response()
     }
@@ -63,12 +54,11 @@ pub struct AppJson<T>(pub T);
 
 impl<T: Serialize> IntoResponse for AppJson<T> {
     fn into_response(self) -> Response {
-        ApiSuccessResponse(ApiSuccess::ok(self.0)).into_response()
+        ApiSuccess::ok(self.0).into_response()
     }
 }
 
-/// 对 `AppError` 的 `IntoResponse` 实现已经在 cuba-shared 中完成
-/// 这里保留 AppErrorResponse 作为兼容性包装（如果需要的话）
+/// 对 `AppError` 的 `IntoResponse` 实现
 pub struct AppErrorResponse(pub AppError);
 
 impl From<AppError> for AppErrorResponse {
@@ -79,8 +69,28 @@ impl From<AppError> for AppErrorResponse {
 
 impl IntoResponse for AppErrorResponse {
     fn into_response(self) -> Response {
-        // 直接委托给 AppError 的 IntoResponse 实现
-        self.0.into_response()
+        let err = self.0;
+        let status = StatusCode::from_u16(err.http_status()).unwrap_or(StatusCode::OK);
+
+        // 对 500 级日志化
+        if err.http_status() >= 500 {
+            tracing::error!(error = %err, "server error");
+        } else {
+            tracing::debug!(error = %err, "business error");
+        }
+
+        let body: ErrorBody = (&err).into();
+        (status, Json(body)).into_response()
+    }
+}
+
+/// 让业务 handler 可以直接 `?` 抛 `AppError`
+///
+/// 约定:业务 handler 的返回类型用 `Result<AppJson<T>, AppError>`,
+/// 由 axum 通过此 impl 把错误转成 JSON 响应。
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        AppErrorResponse(self).into_response()
     }
 }
 

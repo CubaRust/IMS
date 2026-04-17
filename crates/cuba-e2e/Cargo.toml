@@ -12,8 +12,25 @@ cuba-shared = { workspace = true }
 cuba-testkit = { workspace = true }
 cuba-api = { workspace = true }
 cuba-bootstrap = { workspace = true }
+cuba-inventory = { workspace = true }
+cuba-identity = { workspace = true }
+cuba-warehouse = { workspace = true }
+cuba-catalog = { workspace = true }
+cuba-inbound = { workspace = true }
+cuba-outbound = { workspace = true }
+cuba-preissue = { workspace = true }
+cuba-defect = { workspace = true }
+cuba-scrap = { workspace = true }
+cuba-recovery = { workspace = true }
+cuba-customer-return = { workspace = true }
+cuba-supplier-return = { workspace = true }
+cuba-pmc = { workspace = true }
+cuba-stocktake = { workspace = true }
+cuba-reporting = { workspace = true }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+rust_decimal = { workspace = true }
+time = { workspace = true }

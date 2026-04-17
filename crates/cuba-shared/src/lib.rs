@@ -38,7 +38,6 @@ pub mod event;
 pub mod money;
 pub mod pagination;
 pub mod result;
-pub mod serde_helpers;
 pub mod time;
 pub mod types;
 

@@ -23,27 +23,6 @@ use crate::domain::{
 };
 use crate::infrastructure::repository::{InboundRepository, PgInboundRepository};
 
-// -- Date format helper ------------------------------------------------------
-
-mod date_format {
-    use serde::{self, Deserialize, Deserializer};
-    use time::Date;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Date, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Date::parse(&s, &time::format_description::well_known::Iso8601::DEFAULT)
-            .or_else(|_| {
-                // 尝试简单的 YYYY-MM-DD 格式
-                let format = time::macros::format_description!("[year]-[month]-[day]");
-                Date::parse(&s, &format)
-            })
-            .map_err(serde::de::Error::custom)
-    }
-}
-
 // -- View --------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,7 +76,6 @@ pub struct CreateInboundCommand {
     pub wh_id: i64,
     #[serde(default)]
     pub loc_id: Option<i64>,
-    #[serde(deserialize_with = "date_format::deserialize")]
     pub inbound_date: Date,
     #[serde(default)]
     pub remark: Option<String>,

@@ -12,7 +12,6 @@ use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideIn
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
-    serde_helpers::date_format,
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
@@ -67,7 +66,6 @@ pub struct CreateDefectCommand {
     #[serde(default)]
     pub process_name: Option<String>,
     pub product_stage: String,
-    #[serde(deserialize_with = "date_format::deserialize")]
     pub found_date: Date,
     #[serde(default)]
     pub finder_name: Option<String>,

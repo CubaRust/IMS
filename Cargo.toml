@@ -73,6 +73,13 @@ dotenvy = "0.15"
 # --- Utils ---
 once_cell = "1"
 
+# --- Testing ---
+testcontainers = "0.23"
+testcontainers-modules = { version = "0.11", features = ["postgres"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+wiremock = "0.6"
+serial_test = "3"
+
 # --- Auth ---
 jsonwebtoken = "9"
 bcrypt = "0.15"

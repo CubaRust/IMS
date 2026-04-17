@@ -12,7 +12,6 @@ use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideIn
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
-    serde_helpers::date_format,
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
@@ -56,7 +55,6 @@ pub struct CreateScrapCommand {
     pub source_doc_type: Option<String>,
     #[serde(default)]
     pub source_doc_no: Option<String>,
-    #[serde(deserialize_with = "date_format::deserialize")]
     pub scrap_date: Date,
     #[serde(default)]
     pub remark: Option<String>,
