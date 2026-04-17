@@ -52,8 +52,8 @@ impl OutboundRepository for PgOutboundRepository {
                 (outbound_no, outbound_type,
                  target_object_type, target_object_id,
                  work_order_no, process_name, route_id, workshop_name,
-                 wh_id, outbound_date, operator_id, doc_status, remark)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'DRAFT',$12)
+                 wh_id, loc_id, outbound_date, operator_id, doc_status, remark)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'DRAFT',$13)
             returning id
             "#,
         )
@@ -66,24 +66,11 @@ impl OutboundRepository for PgOutboundRepository {
         .bind(cmd.route_id)
         .bind(&cmd.workshop_name)
         .bind(cmd.wh_id)
+        .bind(cmd.loc_id)
         .bind(cmd.outbound_date)
         .bind(ctx.user_id)
         .bind(&cmd.remark)
         .fetch_one(&mut *tx)
-        .await?;
-
-        // outbound_h 的 loc_id 字段不存在 — DDL 是单据级 wh_id,每行可挂自己的 loc_id
-        // 但本期 schema 没给行级 loc_id;我们用 extra_json 或全单一个 loc。
-        // DDL 出库头没有 loc 字段!这是一个与我们 create command 不一致的地方。
-        // 处理:把 loc_id 写进 extra_json。
-        sqlx::query(
-            r#"update wms.wms_outbound_h
-                  set extra_json = jsonb_set(coalesce(extra_json, '{}'::jsonb), '{loc_id}', to_jsonb($1::bigint))
-                where id = $2"#,
-        )
-        .bind(cmd.loc_id)
-        .bind(id)
-        .execute(&mut *tx)
         .await?;
 
         for l in &cmd.lines {
@@ -122,11 +109,12 @@ impl OutboundRepository for PgOutboundRepository {
             select h.id, h.outbound_no, h.outbound_type,
                    h.target_object_type, h.target_object_id,
                    h.work_order_no, h.process_name, h.route_id, h.workshop_name,
-                   h.wh_id, w.wh_code,
+                   h.wh_id, w.wh_code, h.loc_id, l.loc_code,
                    h.outbound_date, h.operator_id, h.doc_status, h.remark,
                    h.created_at, h.updated_at
               from wms.wms_outbound_h h
               left join mdm.mdm_warehouse w on w.id = h.wh_id
+              left join mdm.mdm_location  l on l.id = h.loc_id
              where h.id = $1
             "#,
         )
@@ -162,11 +150,12 @@ impl OutboundRepository for PgOutboundRepository {
             select h.id, h.outbound_no, h.outbound_type,
                    h.target_object_type, h.target_object_id,
                    h.work_order_no, h.process_name, h.route_id, h.workshop_name,
-                   h.wh_id, w.wh_code,
+                   h.wh_id, w.wh_code, h.loc_id, l.loc_code,
                    h.outbound_date, h.operator_id, h.doc_status, h.remark,
                    h.created_at, h.updated_at
               from wms.wms_outbound_h h
               left join mdm.mdm_warehouse w on w.id = h.wh_id
+              left join mdm.mdm_location  l on l.id = h.loc_id
              where 1 = 1
             "#,
         );
@@ -216,6 +205,8 @@ fn row_to_head(row: PgRow, lines: Vec<OutboundLineView>) -> OutboundHeadView {
         workshop_name: row.get("workshop_name"),
         wh_id: row.get("wh_id"),
         wh_code: row.get("wh_code"),
+        loc_id: row.get("loc_id"),
+        loc_code: row.get("loc_code"),
         outbound_date: row.get("outbound_date"),
         operator_id: row.get("operator_id"),
         doc_status: row.get("doc_status"),
@@ -241,6 +232,5 @@ fn row_to_line(row: PgRow) -> OutboundLineView {
         public_material_flag: row.get("public_material_flag"),
         preissue_flag: row.get("preissue_flag"),
         note: row.get("note"),
-        loc_id: None, // 单据级 loc 存在 extra_json,列表行不回显
     }
 }

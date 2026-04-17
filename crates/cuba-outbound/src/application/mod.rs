@@ -37,6 +37,8 @@ pub struct OutboundHeadView {
     pub workshop_name: Option<String>,
     pub wh_id: i64,
     pub wh_code: Option<String>,
+    pub loc_id: Option<i64>,
+    pub loc_code: Option<String>,
     pub outbound_date: Date,
     pub operator_id: Option<i64>,
     pub doc_status: String,
@@ -61,8 +63,6 @@ pub struct OutboundLineView {
     pub public_material_flag: bool,
     pub preissue_flag: bool,
     pub note: Option<String>,
-    /// 出库时的源仓位(由 head.wh_id + 此处 loc_id 决定)
-    pub loc_id: Option<i64>,
 }
 
 // -- Commands ----------------------------------------------------------------
@@ -143,7 +143,6 @@ pub struct SubmitOutboundResult {
 pub struct OutboundService {
     repo: Arc<dyn OutboundRepository>,
     inventory: InventoryService,
-    pool: PgPool,
 }
 
 impl OutboundService {
@@ -151,8 +150,7 @@ impl OutboundService {
     pub fn new(pool: PgPool) -> Self {
         Self {
             repo: Arc::new(PgOutboundRepository::new(pool.clone())),
-            inventory: InventoryService::new(pool.clone()),
-            pool,
+            inventory: InventoryService::new(pool),
         }
     }
 
@@ -215,13 +213,10 @@ impl OutboundService {
             });
         }
 
-        // 读头上的 wh_id + loc_id(需额外查;这里简化用同一个 loc 发所有行,
-        // 进阶:每行可覆写自己的 loc_id)
-        let loc_id: i64 = sqlx::query_scalar("select loc_id from wms.wms_outbound_h where id = $1")
-            .bind(head.id)
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or_else(|| AppError::not_found(format!("出库单 id={} 不存在", head.id)))?;
+        // loc_id 已在 head 里
+        let loc_id = head.loc_id.ok_or_else(|| {
+            AppError::validation(format!("出库单 id={} 未指定 loc_id,无法提交", head.id))
+        })?;
 
         let source = TxnSideInput {
             wh_id: head.wh_id,

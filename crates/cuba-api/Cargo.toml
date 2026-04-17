@@ -15,7 +15,8 @@ cuba-warehouse = { workspace = true }
 cuba-catalog = { workspace = true }
 cuba-inbound = { workspace = true }
 cuba-outbound = { workspace = true }
-# cuba-preissue = { workspace = true }
+cuba-preissue = { workspace = true }
+# cuba-defect = { workspace = true }
 # cuba-inbound = { workspace = true }
 # cuba-outbound = { workspace = true }
 # cuba-stocktake = { workspace = true }
