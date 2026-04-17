@@ -12,6 +12,7 @@ use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideIn
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
+    serde_helpers::date_format,
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
@@ -83,6 +84,7 @@ pub struct CreateRecoveryCommand {
     pub source_defect_id: i64,
     #[serde(default)]
     pub tpl_id: Option<i64>,
+    #[serde(deserialize_with = "date_format::deserialize")]
     pub recovery_date: Date,
     #[serde(default)]
     pub remark: Option<String>,

@@ -173,10 +173,11 @@ on conflict (role_id, permission_id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- 7. 初始管理员用户 (admin / Admin@123)
+-- 注意: 使用 $2a$ 格式的 bcrypt 哈希，与 Rust bcrypt 库兼容
 -- ---------------------------------------------------------------------------
 insert into sys.sys_user (user_code, user_name, login_name, password_hash, is_active) values
     ('admin', '系统管理员', 'admin',
-     '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+     '$2a$10$/GD2bPJipaCyYgvv.U9rNOgpkbaUtSEn1mvlYsZz4aW1HjmZD1nCS',
      true)
 on conflict (user_code) do nothing;
 
