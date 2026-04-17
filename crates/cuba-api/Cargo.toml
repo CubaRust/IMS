@@ -10,6 +10,7 @@ cuba-bootstrap = { workspace = true }
 
 # 业务 crate 依赖(按模块落地进度逐步开)
 cuba-inventory = { workspace = true }
+cuba-identity = { workspace = true }
 # cuba-warehouse = { workspace = true }
 # cuba-catalog = { workspace = true }
 # cuba-inbound = { workspace = true }

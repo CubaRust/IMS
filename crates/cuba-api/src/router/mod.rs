@@ -5,9 +5,11 @@
 //! /health                       -- liveness
 //! /api/v1/
 //!   auth/login                  -- 登录(无守卫)
+//!   auth/me                     -- 当前用户(auth_guard)
+//!   auth/password               -- 改密(auth_guard)
+//!   users / roles / permissions -- 基础管理(auth_guard + 权限点)
 //!   inventory/...               -- 库存(auth_guard)
-//!   inbound/...                 -- 入库(auth_guard)
-//!   ...
+//!   inbound/...                 -- 入库(后续)
 //! ```
 
 use axum::{middleware as axum_mw, routing::get, Router};
@@ -22,15 +24,19 @@ use crate::{
     response::not_found_fallback,
 };
 
+pub mod identity;
 pub mod inventory;
 
 /// 构建根 Router
 pub fn build_router(state: AppState) -> Router {
-    // 公开路由(无需 auth)
-    let public: Router<AppState> = Router::new().route("/health", get(health));
+    // 公开路由(不走 auth_guard)
+    let public: Router<AppState> = Router::new()
+        .route("/health", get(health))
+        .merge(identity::public_routes());
 
-    // 带鉴权的路由
+    // 带鉴权路由
     let protected: Router<AppState> = Router::new()
+        .merge(identity::protected_routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 

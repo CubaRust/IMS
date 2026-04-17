@@ -7,20 +7,18 @@ license.workspace = true
 [dependencies]
 cuba-shared = { workspace = true }
 
-axum = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
-uuid = { workspace = true }
 time = { workspace = true }
-rust_decimal = { workspace = true }
-bigdecimal = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 validator = { workspace = true }
+jsonwebtoken = { workspace = true }
+bcrypt = { workspace = true }
 
 [dev-dependencies]
 cuba-testkit = { workspace = true }
