@@ -1,0 +1,8 @@
+/target
+/.idea
+/.vscode
+.env
+.DS_Store
+*.log
+/tmp
+# 注意:Cargo.lock 保留提交,应用项目需锁定依赖版本
