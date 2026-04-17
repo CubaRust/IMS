@@ -605,11 +605,14 @@ dependencies = [
  "axum",
  "cuba-bootstrap",
  "cuba-catalog",
+ "cuba-defect",
  "cuba-identity",
  "cuba-inbound",
  "cuba-inventory",
  "cuba-outbound",
  "cuba-preissue",
+ "cuba-recovery",
+ "cuba-scrap",
  "cuba-shared",
  "cuba-warehouse",
  "serde",
@@ -844,8 +847,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
- "bigdecimal",
+ "cuba-inventory",
  "cuba-shared",
  "cuba-testkit",
  "rust_decimal",
@@ -856,7 +858,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "uuid",
  "validator",
 ]
 

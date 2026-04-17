@@ -25,9 +25,11 @@ use crate::{
 };
 
 pub mod catalog;
+pub mod exception;
 pub mod identity;
 pub mod inbound_outbound;
 pub mod inventory;
+pub mod preissue;
 pub mod warehouse;
 
 /// 构建根 Router
@@ -43,6 +45,8 @@ pub fn build_router(state: AppState) -> Router {
         .merge(warehouse::routes())
         .merge(catalog::routes())
         .merge(inbound_outbound::routes())
+        .merge(preissue::routes())
+        .merge(exception::routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 
