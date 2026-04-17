@@ -16,7 +16,9 @@
 
 pub mod dto;
 pub mod middleware;
+pub mod openapi;
 pub mod response;
 pub mod router;
 
+pub use openapi::{swagger_router, ApiDoc};
 pub use router::build_router;

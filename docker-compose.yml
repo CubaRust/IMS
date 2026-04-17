@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  pg:
+    image: postgres:16
+    container_name: cuba-pg
+    environment:
+      POSTGRES_USER: cuba
+      POSTGRES_PASSWORD: cuba
+      POSTGRES_DB: cuba_ims
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - cuba-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cuba -d cuba_ims"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  cuba-pgdata:
