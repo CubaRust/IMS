@@ -24,8 +24,10 @@ use crate::{
     response::not_found_fallback,
 };
 
+pub mod catalog;
 pub mod identity;
 pub mod inventory;
+pub mod warehouse;
 
 /// 构建根 Router
 pub fn build_router(state: AppState) -> Router {
@@ -37,6 +39,8 @@ pub fn build_router(state: AppState) -> Router {
     // 带鉴权路由
     let protected: Router<AppState> = Router::new()
         .merge(identity::protected_routes())
+        .merge(warehouse::routes())
+        .merge(catalog::routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 
