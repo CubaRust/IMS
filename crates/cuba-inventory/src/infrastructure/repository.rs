@@ -117,7 +117,9 @@ impl InventoryRepository for PgInventoryRepository {
     ) -> Result<PageResponse<BalanceView>, AppError> {
         let p = page.normalize();
 
-        // sqlx QueryBuilder:按非空条件动态拼
+        // 独立的 count,避免 QueryBuilder 共用绑定参数的坑
+        let total = count_balance(&self.pool, query).await.unwrap_or(0);
+
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select b.id, b.material_id, m.material_code, m.material_name,
@@ -133,39 +135,7 @@ impl InventoryRepository for PgInventoryRepository {
              where 1 = 1
             "#,
         );
-        if let Some(mid) = query.material_id {
-            qb.push(" and b.material_id = ").push_bind(mid);
-        }
-        if let Some(wh) = query.wh_id {
-            qb.push(" and b.wh_id = ").push_bind(wh);
-        }
-        if let Some(loc) = query.loc_id {
-            qb.push(" and b.loc_id = ").push_bind(loc);
-        }
-        if let Some(batch) = &query.batch_no {
-            qb.push(" and b.batch_no = ").push_bind(batch.clone());
-        }
-        if let Some(status) = query.stock_status {
-            qb.push(" and b.stock_status = ").push_bind(status.as_str());
-        }
-        if query.only_positive {
-            qb.push(" and b.book_qty > 0");
-        }
-
-        // 先 count
-        let count_sql = format!(
-            "select count(*) from ({}) x",
-            qb.sql().replace(
-                "select b.id, b.material_id, m.material_code, m.material_name,",
-                "select b.id,"
-            )
-        );
-        let total: i64 = sqlx::query_scalar(&count_sql)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
-        // 注意:这种 count 拼接对绑定参数的重用有风险。生产级要改成两次独立 QueryBuilder。
-        // 本期暂接受(数据量小,行数查不准最多影响分页),M1 后迭代。
+        push_balance_filters(&mut qb, query);
 
         qb.push(" order by b.updated_at desc ");
         qb.push(" limit ").push_bind(p.limit());
@@ -183,6 +153,8 @@ impl InventoryRepository for PgInventoryRepository {
     ) -> Result<PageResponse<TxnHeadView>, AppError> {
         let p = page.normalize();
 
+        let total = count_txns(&self.pool, query).await.unwrap_or(0);
+
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select id, txn_no, txn_type, scene_code, scene_name,
@@ -194,24 +166,7 @@ impl InventoryRepository for PgInventoryRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &query.doc_no {
-            qb.push(" and doc_no = ").push_bind(no.clone());
-        }
-        if let Some(s) = &query.scene_code {
-            qb.push(" and scene_code = ").push_bind(s.clone());
-        }
-        if let Some(t) = &query.doc_type {
-            qb.push(" and doc_type = ").push_bind(t.clone());
-        }
-        if let Some(from) = query.date_from {
-            qb.push(" and operate_time >= ").push_bind(from);
-        }
-        if let Some(to) = query.date_to {
-            qb.push(" and operate_time < ").push_bind(to);
-        }
-
-        // total(独立查)
-        let total = count_txns(&self.pool, query).await.unwrap_or(0);
+        push_txn_filters(&mut qb, query);
 
         qb.push(" order by operate_time desc ");
         qb.push(" limit ").push_bind(p.limit());
@@ -393,10 +348,46 @@ async fn upsert_balance(
     }
 }
 
+async fn count_balance(pool: &PgPool, query: &QueryBalance) -> Result<i64, AppError> {
+    let mut qb = sqlx::QueryBuilder::<Postgres>::new(
+        "select count(*) from wms.wms_inventory_balance b where 1 = 1",
+    );
+    push_balance_filters(&mut qb, query);
+    let c: i64 = qb.build_query_scalar().fetch_one(pool).await?;
+    Ok(c)
+}
+
+fn push_balance_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryBalance) {
+    if let Some(mid) = query.material_id {
+        qb.push(" and b.material_id = ").push_bind(mid);
+    }
+    if let Some(wh) = query.wh_id {
+        qb.push(" and b.wh_id = ").push_bind(wh);
+    }
+    if let Some(loc) = query.loc_id {
+        qb.push(" and b.loc_id = ").push_bind(loc);
+    }
+    if let Some(batch) = &query.batch_no {
+        qb.push(" and b.batch_no = ").push_bind(batch.clone());
+    }
+    if let Some(status) = query.stock_status {
+        qb.push(" and b.stock_status = ").push_bind(status.as_str());
+    }
+    if query.only_positive {
+        qb.push(" and b.book_qty > 0");
+    }
+}
+
 async fn count_txns(pool: &PgPool, query: &QueryTxns) -> Result<i64, AppError> {
     let mut qb = sqlx::QueryBuilder::<Postgres>::new(
         "select count(*) from wms.wms_inventory_txn_h where 1 = 1",
     );
+    push_txn_filters(&mut qb, query);
+    let c: i64 = qb.build_query_scalar().fetch_one(pool).await?;
+    Ok(c)
+}
+
+fn push_txn_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryTxns) {
     if let Some(no) = &query.doc_no {
         qb.push(" and doc_no = ").push_bind(no.clone());
     }
@@ -412,8 +403,6 @@ async fn count_txns(pool: &PgPool, query: &QueryTxns) -> Result<i64, AppError> {
     if let Some(to) = query.date_to {
         qb.push(" and operate_time < ").push_bind(to);
     }
-    let c: i64 = qb.build_query_scalar().fetch_one(pool).await?;
-    Ok(c)
 }
 
 // ---------------------------------------------------------------------------

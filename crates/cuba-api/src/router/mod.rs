@@ -9,13 +9,6 @@
 //!   inbound/...                 -- 入库(auth_guard)
 //!   ...
 //! ```
-//!
-//! 业务模块接入的标准模式:
-//! ```ignore
-//! use cuba_inventory::application as inv_app;
-//! .nest("/inventory", inventory_routes(state.clone()))
-//! ```
-//! 目前只有 /health + 404 fallback,其他模块逐步接入。
 
 use axum::{middleware as axum_mw, routing::get, Router};
 use tower_http::{
@@ -25,22 +18,21 @@ use tower_http::{
 use cuba_bootstrap::AppState;
 
 use crate::{
-    middleware::{health, trace_id},
+    middleware::{auth_guard, health, trace_id},
     response::not_found_fallback,
 };
+
+pub mod inventory;
 
 /// 构建根 Router
 pub fn build_router(state: AppState) -> Router {
     // 公开路由(无需 auth)
-    let public = Router::new().route("/health", get(health));
+    let public: Router<AppState> = Router::new().route("/health", get(health));
 
-    // 带鉴权的路由(目前是空,各业务模块接入)
-    let protected: Router<AppState> = Router::new();
-    // 后续接入示例:
-    // let protected = protected
-    //     .nest("/inventory", inventory_routes())
-    //     .nest("/inbound",   inbound_routes())
-    //     .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
+    // 带鉴权的路由
+    let protected: Router<AppState> = Router::new()
+        .nest("/inventory", inventory::routes())
+        .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 
     let api_v1 = Router::new().merge(public).merge(protected);
 
