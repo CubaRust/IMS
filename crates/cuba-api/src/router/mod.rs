@@ -26,6 +26,7 @@ use crate::{
 
 pub mod catalog;
 pub mod identity;
+pub mod inbound_outbound;
 pub mod inventory;
 pub mod warehouse;
 
@@ -41,6 +42,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(identity::protected_routes())
         .merge(warehouse::routes())
         .merge(catalog::routes())
+        .merge(inbound_outbound::routes())
         .nest("/inventory", inventory::routes())
         .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
 
