@@ -1,0 +1,19 @@
+[package]
+name = "cuba-e2e"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+cuba-shared = { workspace = true }
+
+[dev-dependencies]
+cuba-testkit = { workspace = true }
+cuba-api = { workspace = true }
+cuba-bootstrap = { workspace = true }
+
+tokio = { workspace = true }
+sqlx = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

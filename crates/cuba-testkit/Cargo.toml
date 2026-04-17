@@ -1,0 +1,13 @@
+[package]
+name = "cuba-testkit"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cuba-shared = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }
+anyhow = { workspace = true }
