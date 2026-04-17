@@ -17,6 +17,7 @@
 pub mod dto;
 pub mod middleware;
 pub mod openapi;
+pub mod openapi_schema;
 pub mod response;
 pub mod router;
 

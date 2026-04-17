@@ -59,7 +59,7 @@ pub fn build_router(state: AppState) -> Router {
     Router::new()
         .nest("/api/v1", api_v1)
         .route("/health", get(health))
-        .merge(crate::openapi::swagger_router::<AppState>())
+        .merge(crate::openapi::swagger_router())
         .fallback(not_found_fallback)
         .layer(axum_mw::from_fn(trace_id))
         .layer(TraceLayer::new_for_http())
