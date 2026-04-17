@@ -16,6 +16,7 @@ async-trait = { workspace = true }
 validator = { workspace = true }
 once_cell = { workspace = true }
 jsonwebtoken = { workspace = true }
+anyhow = { workspace = true }
 bcrypt = { workspace = true }
 axum = { workspace = true }
 sqlx = { workspace = true }
