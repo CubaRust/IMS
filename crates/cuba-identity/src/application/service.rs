@@ -101,6 +101,7 @@ impl IdentityService {
             exp,
             iat: now,
             jti,
+            tenant_id: user.tenant_id,
             roles: roles.clone(),
             permissions: permissions.clone(),
         };
@@ -218,6 +219,7 @@ impl IdentityService {
             exp,
             iat: now,
             jti: new_jti,
+            tenant_id: user.tenant_id,
             roles: roles.clone(),
             permissions: permissions.clone(),
         };

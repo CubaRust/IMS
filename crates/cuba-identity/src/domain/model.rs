@@ -7,6 +7,7 @@ use time::PrimitiveDateTime;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
+    pub tenant_id: i64,
     pub user_code: String,
     pub user_name: String,
     pub login_name: String,

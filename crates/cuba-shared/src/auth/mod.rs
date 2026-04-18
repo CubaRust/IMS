@@ -26,10 +26,17 @@ pub struct Claims {
     /// JWT ID,登出/吊销时按此值写黑名单
     #[serde(default)]
     pub jti: String,
+    /// 租户 id(多租户隔离)
+    #[serde(default = "default_tenant")]
+    pub tenant_id: i64,
     #[serde(default)]
     pub roles: Vec<String>,
     #[serde(default)]
     pub permissions: Vec<String>,
+}
+
+const fn default_tenant() -> i64 {
+    1
 }
 
 impl Claims {

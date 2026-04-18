@@ -94,6 +94,7 @@ pub async fn auth_guard(
         user_id,
         login_name: claims.login_name,
         trace_id,
+        tenant_id: claims.tenant_id,
         ip: None,
         user_agent: req
             .headers()

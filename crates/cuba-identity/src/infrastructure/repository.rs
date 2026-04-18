@@ -310,6 +310,7 @@ impl IdentityRepository for PgIdentityRepository {
 fn row_to_user(row: PgRow) -> User {
     User {
         id: row.get("id"),
+        tenant_id: row.try_get("tenant_id").unwrap_or(1),
         user_code: row.get("user_code"),
         user_name: row.get("user_name"),
         login_name: row.get("login_name"),

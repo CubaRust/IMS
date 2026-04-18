@@ -16,6 +16,9 @@ pub struct AuditContext {
     pub user_id: i64,
     pub login_name: String,
     pub trace_id: String,
+    /// 当前租户(多租户隔离核心字段)
+    #[serde(default = "default_tenant")]
+    pub tenant_id: i64,
     #[serde(default)]
     pub ip: Option<String>,
     #[serde(default)]
@@ -34,6 +37,10 @@ pub struct AuditContext {
     pub jwt_exp: Option<i64>,
 }
 
+const fn default_tenant() -> i64 {
+    1
+}
+
 impl AuditContext {
     /// 仅用于 **测试和内部后台任务**,不允许从 HTTP 层构造
     #[must_use]
@@ -42,6 +49,7 @@ impl AuditContext {
             user_id: 0,
             login_name: "system".to_string(),
             trace_id: trace_id.into(),
+            tenant_id: 1,
             ip: None,
             user_agent: None,
             permissions: vec!["*".to_string()],
