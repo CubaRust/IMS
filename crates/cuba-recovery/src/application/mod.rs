@@ -208,13 +208,13 @@ impl RecoveryService {
         ctx: &AuditContext,
         id: i64,
     ) -> Result<SubmitRecoveryResult, AppError> {
-        let head = self.repo.get(id).await?;
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
             return Err(RecoveryError::invalid_transition(&head.doc_status, "submit"));
         }
 
-        let (src_wh, src_loc, scrap_wh, scrap_loc) = self.repo.get_locations(id).await?;
+        let (src_wh, src_loc, scrap_wh, scrap_loc) = self.repo.get_locations(ctx.tenant_id, id).await?;
 
         // CONVERT 里要求:至少一条 OUT + 至少一条 IN;这里我们批量构造
         let mut lines: Vec<TxnLineInput> = Vec::new();
@@ -351,7 +351,7 @@ impl RecoveryService {
         };
         let committed = self.inventory.commit(ctx, tcmd).await?;
 
-        self.repo.update_status(head.id, DocStatus::Completed).await?;
+        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Completed).await?;
 
         Ok(SubmitRecoveryResult {
             recovery_id: head.id,
@@ -361,20 +361,24 @@ impl RecoveryService {
         })
     }
 
-    pub async fn void(&self, _ctx: &AuditContext, id: i64) -> Result<(), AppError> {
-        let head = self.repo.get(id).await?;
+    pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !status.can_void() {
             return Err(RecoveryError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(head.id, DocStatus::Voided).await
+        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Voided).await
     }
 
-    pub async fn get(&self, id: i64) -> Result<RecoveryHeadView, AppError> {
-        self.repo.get(id).await
+    pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<RecoveryHeadView, AppError> {
+        self.repo.get(ctx.tenant_id, id).await
     }
 
-    pub async fn list(&self, q: &QueryRecoveries) -> Result<Vec<RecoveryHeadView>, AppError> {
-        self.repo.list(q).await
+    pub async fn list(
+        &self,
+        ctx: &AuditContext,
+        q: &QueryRecoveries,
+    ) -> Result<Vec<RecoveryHeadView>, AppError> {
+        self.repo.list(ctx.tenant_id, q).await
     }
 }

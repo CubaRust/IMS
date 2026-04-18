@@ -21,13 +21,23 @@ pub trait DefectRepository: Send + Sync {
         ctx: &AuditContext,
         cmd: &CreateDefectCommand,
     ) -> Result<DefectHeadView, AppError>;
-    async fn get(&self, id: i64) -> Result<DefectHeadView, AppError>;
-    async fn list(&self, q: &QueryDefects) -> Result<Vec<DefectHeadView>, AppError>;
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<DefectHeadView, AppError>;
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryDefects,
+    ) -> Result<Vec<DefectHeadView>, AppError>;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError>;
 
     /// 从 extra_json 取仓位
     async fn get_locations(
         &self,
+        tenant_id: i64,
         id: i64,
     ) -> Result<(i64, i64, Option<i64>, Option<i64>), AppError>;
 }
@@ -66,13 +76,14 @@ impl DefectRepository for PgDefectRepository {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into wms.wms_defect_h
-                (defect_no, defect_source, work_order_no, process_name,
+                (tenant_id, defect_no, defect_source, work_order_no, process_name,
                  product_stage, found_date, finder_name, process_method,
                  operator_id, doc_status, extra_json, remark)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'DRAFT',$10,$11)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DRAFT',$11,$12)
             returning id
             "#,
         )
+        .bind(ctx.tenant_id)
         .bind(&defect_no)
         .bind(&cmd.defect_source)
         .bind(&cmd.work_order_no)
@@ -91,11 +102,12 @@ impl DefectRepository for PgDefectRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_defect_d
-                    (defect_id, line_no, material_id, batch_no, qty, unit,
+                    (tenant_id, defect_id, line_no, material_id, batch_no, qty, unit,
                      defect_reason, defect_desc, source_doc_type, source_doc_no, note)
-                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -112,12 +124,13 @@ impl DefectRepository for PgDefectRepository {
         }
 
         tx.commit().await?;
-        self.get(id).await
+        self.get(ctx.tenant_id, id).await
     }
 
-    async fn get(&self, id: i64) -> Result<DefectHeadView, AppError> {
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<DefectHeadView, AppError> {
         let head = sqlx::query(SELECT_HEAD)
             .bind(id)
+            .bind(tenant_id)
             .fetch_optional(&self.pool)
             .await?
             .ok_or_else(|| AppError::not_found(format!("不良单 id={id} 不存在")))?;
@@ -131,11 +144,12 @@ impl DefectRepository for PgDefectRepository {
                    d.target_status, d.note
               from wms.wms_defect_d d
               left join mdm.mdm_material m on m.id = d.material_id
-             where d.defect_id = $1
+             where d.defect_id = $1 and d.tenant_id = $2
              order by d.line_no
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_all(&self.pool)
         .await?
         .into_iter()
@@ -145,16 +159,21 @@ impl DefectRepository for PgDefectRepository {
         Ok(row_to_head(head, lines))
     }
 
-    async fn list(&self, q: &QueryDefects) -> Result<Vec<DefectHeadView>, AppError> {
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryDefects,
+    ) -> Result<Vec<DefectHeadView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select h.id, h.defect_no, h.defect_source, h.work_order_no, h.process_name,
                    h.product_stage, h.found_date, h.finder_name, h.process_method,
                    h.operator_id, h.doc_status, h.remark, h.created_at, h.updated_at
               from wms.wms_defect_h h
-             where 1 = 1
+             where h.tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         if let Some(no) = &q.defect_no {
             qb.push(" and h.defect_no = ").push_bind(no.clone());
         }
@@ -184,23 +203,33 @@ impl DefectRepository for PgDefectRepository {
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
     }
 
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError> {
-        sqlx::query("update wms.wms_defect_h set doc_status = $1 where id = $2")
-            .bind(status.as_str())
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            "update wms.wms_defect_h set doc_status = $1 where id = $2 and tenant_id = $3",
+        )
+        .bind(status.as_str())
+        .bind(id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
     async fn get_locations(
         &self,
+        tenant_id: i64,
         id: i64,
     ) -> Result<(i64, i64, Option<i64>, Option<i64>), AppError> {
         let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_defect_h where id = $1",
+            "select extra_json from wms.wms_defect_h where id = $1 and tenant_id = $2",
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::not_found(format!("不良单 id={id} 不存在")))?;
@@ -220,7 +249,7 @@ const SELECT_HEAD: &str = r#"
            h.product_stage, h.found_date, h.finder_name, h.process_method,
            h.operator_id, h.doc_status, h.remark, h.created_at, h.updated_at
       from wms.wms_defect_h h
-     where h.id = $1
+     where h.id = $1 and h.tenant_id = $2
 "#;
 
 fn row_to_head(row: PgRow, lines: Vec<DefectLineView>) -> DefectHeadView {

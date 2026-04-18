@@ -21,12 +21,25 @@ pub trait RecoveryRepository: Send + Sync {
         ctx: &AuditContext,
         cmd: &CreateRecoveryCommand,
     ) -> Result<RecoveryHeadView, AppError>;
-    async fn get(&self, id: i64) -> Result<RecoveryHeadView, AppError>;
-    async fn list(&self, q: &QueryRecoveries) -> Result<Vec<RecoveryHeadView>, AppError>;
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<RecoveryHeadView, AppError>;
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryRecoveries,
+    ) -> Result<Vec<RecoveryHeadView>, AppError>;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError>;
 
     /// (src_wh, src_loc, scrap_wh, scrap_loc) 从 extra_json 读
-    async fn get_locations(&self, id: i64) -> Result<(i64, i64, i64, i64), AppError>;
+    async fn get_locations(
+        &self,
+        tenant_id: i64,
+        id: i64,
+    ) -> Result<(i64, i64, i64, i64), AppError>;
 }
 
 pub struct PgRecoveryRepository {
@@ -62,12 +75,13 @@ impl RecoveryRepository for PgRecoveryRepository {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into wms.wms_recovery_h
-                (recovery_no, source_defect_id, tpl_id, recovery_date,
+                (tenant_id, recovery_no, source_defect_id, tpl_id, recovery_date,
                  operator_id, doc_status, extra_json, remark)
-            values ($1,$2,$3,$4,$5,'DRAFT',$6,$7)
+            values ($1,$2,$3,$4,$5,$6,'DRAFT',$7,$8)
             returning id
             "#,
         )
+        .bind(ctx.tenant_id)
         .bind(&recovery_no)
         .bind(cmd.source_defect_id)
         .bind(cmd.tpl_id)
@@ -81,10 +95,11 @@ impl RecoveryRepository for PgRecoveryRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_recovery_in
-                    (recovery_id, line_no, material_id, batch_no, qty, unit, note)
-                values ($1,$2,$3,$4,$5,$6,$7)
+                    (tenant_id, recovery_id, line_no, material_id, batch_no, qty, unit, note)
+                values ($1,$2,$3,$4,$5,$6,$7,$8)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -99,11 +114,12 @@ impl RecoveryRepository for PgRecoveryRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_recovery_out
-                    (recovery_id, line_no, material_id, qty, unit,
+                    (tenant_id, recovery_id, line_no, material_id, qty, unit,
                      target_wh_id, target_loc_id, target_status, note)
-                values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -120,10 +136,11 @@ impl RecoveryRepository for PgRecoveryRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_recovery_scrap
-                    (recovery_id, line_no, material_id, qty, unit, scrap_reason, note)
-                values ($1,$2,$3,$4,$5,$6,$7)
+                    (tenant_id, recovery_id, line_no, material_id, qty, unit, scrap_reason, note)
+                values ($1,$2,$3,$4,$5,$6,$7,$8)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -135,10 +152,10 @@ impl RecoveryRepository for PgRecoveryRepository {
         }
 
         tx.commit().await?;
-        self.get(id).await
+        self.get(ctx.tenant_id, id).await
     }
 
-    async fn get(&self, id: i64) -> Result<RecoveryHeadView, AppError> {
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<RecoveryHeadView, AppError> {
         let head = sqlx::query(
             r#"
             select h.id, h.recovery_no, h.source_defect_id,
@@ -147,10 +164,11 @@ impl RecoveryRepository for PgRecoveryRepository {
                    h.doc_status, h.remark, h.created_at, h.updated_at
               from wms.wms_recovery_h h
               left join wms.wms_defect_h df on df.id = h.source_defect_id
-             where h.id = $1
+             where h.id = $1 and h.tenant_id = $2
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::not_found(format!("拆解回收单 id={id} 不存在")))?;
@@ -161,11 +179,11 @@ impl RecoveryRepository for PgRecoveryRepository {
                    i.batch_no, i.qty, i.unit, i.note
               from wms.wms_recovery_in i
               left join mdm.mdm_material m on m.id = i.material_id
-             where i.recovery_id = $1
+             where i.recovery_id = $1 and i.tenant_id = $2
              order by i.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
+        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
         .into_iter().map(row_to_in).collect();
 
         let outputs = sqlx::query(
@@ -175,11 +193,11 @@ impl RecoveryRepository for PgRecoveryRepository {
                    o.target_status, o.note
               from wms.wms_recovery_out o
               left join mdm.mdm_material m on m.id = o.material_id
-             where o.recovery_id = $1
+             where o.recovery_id = $1 and o.tenant_id = $2
              order by o.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
+        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
         .into_iter().map(row_to_out).collect();
 
         let scraps = sqlx::query(
@@ -188,17 +206,21 @@ impl RecoveryRepository for PgRecoveryRepository {
                    s.qty, s.unit, s.scrap_reason, s.note
               from wms.wms_recovery_scrap s
               left join mdm.mdm_material m on m.id = s.material_id
-             where s.recovery_id = $1
+             where s.recovery_id = $1 and s.tenant_id = $2
              order by s.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
+        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
         .into_iter().map(row_to_scrap).collect();
 
         Ok(row_to_head(head, inputs, outputs, scraps))
     }
 
-    async fn list(&self, q: &QueryRecoveries) -> Result<Vec<RecoveryHeadView>, AppError> {
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryRecoveries,
+    ) -> Result<Vec<RecoveryHeadView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select h.id, h.recovery_no, h.source_defect_id,
@@ -207,9 +229,10 @@ impl RecoveryRepository for PgRecoveryRepository {
                    h.doc_status, h.remark, h.created_at, h.updated_at
               from wms.wms_recovery_h h
               left join wms.wms_defect_h df on df.id = h.source_defect_id
-             where 1 = 1
+             where h.tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         if let Some(no) = &q.recovery_no { qb.push(" and h.recovery_no = ").push_bind(no.clone()); }
         if let Some(d)  = q.source_defect_id { qb.push(" and h.source_defect_id = ").push_bind(d); }
         if let Some(s)  = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
@@ -220,19 +243,32 @@ impl RecoveryRepository for PgRecoveryRepository {
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![], vec![], vec![])).collect())
     }
 
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError> {
-        sqlx::query("update wms.wms_recovery_h set doc_status = $1 where id = $2")
-            .bind(status.as_str())
-            .bind(id)
-            .execute(&self.pool).await?;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            "update wms.wms_recovery_h set doc_status = $1 where id = $2 and tenant_id = $3",
+        )
+        .bind(status.as_str())
+        .bind(id)
+        .bind(tenant_id)
+        .execute(&self.pool).await?;
         Ok(())
     }
 
-    async fn get_locations(&self, id: i64) -> Result<(i64, i64, i64, i64), AppError> {
+    async fn get_locations(
+        &self,
+        tenant_id: i64,
+        id: i64,
+    ) -> Result<(i64, i64, i64, i64), AppError> {
         let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_recovery_h where id = $1",
+            "select extra_json from wms.wms_recovery_h where id = $1 and tenant_id = $2",
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool).await?
         .ok_or_else(|| AppError::not_found(format!("拆解回收单 id={id} 不存在")))?;
 

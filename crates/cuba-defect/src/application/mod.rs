@@ -180,14 +180,14 @@ impl DefectService {
         ctx: &AuditContext,
         id: i64,
     ) -> Result<SubmitDefectResult, AppError> {
-        let head = self.repo.get(id).await?;
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
             return Err(DefectError::invalid_transition(&head.doc_status, "submit"));
         }
 
         let txn_no = if head.process_method == "TO_BAD_STOCK" {
-            let (src_wh, src_loc, tgt_wh, tgt_loc) = self.repo.get_locations(id).await?;
+            let (src_wh, src_loc, tgt_wh, tgt_loc) = self.repo.get_locations(ctx.tenant_id, id).await?;
             let tgt_wh = tgt_wh.ok_or_else(|| {
                 AppError::validation("TO_BAD_STOCK 必须指定 target_wh_id")
             })?;
@@ -273,7 +273,7 @@ impl DefectService {
             None
         };
 
-        self.repo.update_status(head.id, DocStatus::Completed).await?;
+        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Completed).await?;
 
         Ok(SubmitDefectResult {
             defect_id: head.id,
@@ -290,20 +290,24 @@ impl DefectService {
         })
     }
 
-    pub async fn void(&self, _ctx: &AuditContext, id: i64) -> Result<(), AppError> {
-        let head = self.repo.get(id).await?;
+    pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !status.can_void() {
             return Err(DefectError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(head.id, DocStatus::Voided).await
+        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Voided).await
     }
 
-    pub async fn get(&self, id: i64) -> Result<DefectHeadView, AppError> {
-        self.repo.get(id).await
+    pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<DefectHeadView, AppError> {
+        self.repo.get(ctx.tenant_id, id).await
     }
 
-    pub async fn list(&self, q: &QueryDefects) -> Result<Vec<DefectHeadView>, AppError> {
-        self.repo.list(q).await
+    pub async fn list(
+        &self,
+        ctx: &AuditContext,
+        q: &QueryDefects,
+    ) -> Result<Vec<DefectHeadView>, AppError> {
+        self.repo.list(ctx.tenant_id, q).await
     }
 }
