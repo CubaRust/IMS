@@ -157,9 +157,7 @@ impl IdentityService {
         ctx: &AuditContext,
         q: &QueryUsers,
     ) -> Result<Vec<UserView>, AppError> {
-        let mut q = q.clone();
-        q.tenant_id = Some(ctx.tenant_id);
-        self.repo.list_users(&q).await
+        self.repo.list_users(ctx.tenant_id, q).await
     }
 
     pub async fn list_roles(&self) -> Result<Vec<RoleView>, AppError> {

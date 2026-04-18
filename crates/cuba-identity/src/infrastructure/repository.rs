@@ -30,7 +30,11 @@ pub trait IdentityRepository: Send + Sync {
 
     async fn me(&self, user_id: i64) -> Result<UserView, AppError>;
 
-    async fn list_users(&self, q: &QueryUsers) -> Result<Vec<UserView>, AppError>;
+    async fn list_users(
+        &self,
+        tenant_id: i64,
+        q: &QueryUsers,
+    ) -> Result<Vec<UserView>, AppError>;
     async fn list_roles(&self) -> Result<Vec<RoleView>, AppError>;
     async fn list_permissions(&self) -> Result<Vec<PermissionView>, AppError>;
 
@@ -153,7 +157,11 @@ impl IdentityRepository for PgIdentityRepository {
         Ok(row_to_user_view(row, roles))
     }
 
-    async fn list_users(&self, q: &QueryUsers) -> Result<Vec<UserView>, AppError> {
+    async fn list_users(
+        &self,
+        tenant_id: i64,
+        q: &QueryUsers,
+    ) -> Result<Vec<UserView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select u.id, u.user_code, u.user_name, u.login_name,
@@ -170,11 +178,8 @@ impl IdentityRepository for PgIdentityRepository {
             .push_bind(role.clone());
         }
 
-        qb.push(" where 1 = 1 ");
+        qb.push(" where u.tenant_id = ").push_bind(tenant_id);
 
-        if let Some(t) = q.tenant_id {
-            qb.push(" and u.tenant_id = ").push_bind(t);
-        }
         if let Some(login) = &q.login_name {
             qb.push(" and u.login_name ilike ").push_bind(format!("%{login}%"));
         }

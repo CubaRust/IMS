@@ -9,7 +9,4 @@ pub struct QueryUsers {
     pub user_name: Option<String>,
     pub is_active: Option<bool>,
     pub role_code: Option<String>,
-    /// 租户 id(service 层注入)
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }

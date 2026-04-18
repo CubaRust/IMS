@@ -21,7 +21,11 @@ pub trait InboundRepository: Send + Sync {
     ) -> Result<InboundHeadView, AppError>;
 
     async fn get(&self, tenant_id: i64, id: i64) -> Result<InboundHeadView, AppError>;
-    async fn list(&self, q: &QueryInbounds) -> Result<Vec<InboundHeadView>, AppError>;
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryInbounds,
+    ) -> Result<Vec<InboundHeadView>, AppError>;
     async fn update_status(
         &self,
         tenant_id: i64,
@@ -55,7 +59,7 @@ impl InboundRepository for PgInboundRepository {
                 .fetch_one(&mut *tx)
                 .await?;
 
-        let tenant_id = cmd.tenant_id.unwrap_or(ctx.tenant_id);
+        let tenant_id = ctx.tenant_id;
 
         let id: i64 = sqlx::query_scalar(
             r#"
@@ -162,7 +166,11 @@ impl InboundRepository for PgInboundRepository {
         Ok(row_to_head(head, lines))
     }
 
-    async fn list(&self, q: &QueryInbounds) -> Result<Vec<InboundHeadView>, AppError> {
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryInbounds,
+    ) -> Result<Vec<InboundHeadView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select h.id, h.inbound_no, h.inbound_type, h.supplier_id,
@@ -175,12 +183,10 @@ impl InboundRepository for PgInboundRepository {
               left join mdm.mdm_supplier  s on s.id = h.supplier_id
               left join mdm.mdm_warehouse w on w.id = h.wh_id
               left join mdm.mdm_location  l on l.id = h.loc_id
-             where 1 = 1
+             where h.tenant_id =
             "#,
         );
-        if let Some(t) = q.tenant_id {
-            qb.push(" and h.tenant_id = ").push_bind(t);
-        }
+        qb.push_bind(tenant_id);
         if let Some(no) = &q.inbound_no {
             qb.push(" and h.inbound_no = ").push_bind(no.clone());
         }

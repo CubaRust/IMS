@@ -80,9 +80,6 @@ pub struct CreateInboundCommand {
     #[serde(default)]
     pub remark: Option<String>,
     pub lines: Vec<CreateInboundLine>,
-    /// 租户 id(service 层注入,不从前端传入)
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -118,8 +115,6 @@ pub struct QueryInbounds {
     pub doc_status: Option<String>,
     pub date_from: Option<Date>,
     pub date_to: Option<Date>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -137,6 +132,7 @@ pub struct InboundService {
     repo: Arc<dyn InboundRepository>,
     inventory: InventoryService,
     preissue: PreissueService,
+    pool_for_events: PgPool,
 }
 
 impl InboundService {
@@ -145,7 +141,8 @@ impl InboundService {
         Self {
             repo: Arc::new(PgInboundRepository::new(pool.clone())),
             inventory: InventoryService::new(pool.clone()),
-            preissue: PreissueService::new(pool),
+            preissue: PreissueService::new(pool.clone()),
+            pool_for_events: pool,
         }
     }
 
@@ -153,7 +150,7 @@ impl InboundService {
     pub async fn create(
         &self,
         ctx: &AuditContext,
-        mut cmd: CreateInboundCommand,
+        cmd: CreateInboundCommand,
     ) -> Result<InboundHeadView, AppError> {
         if !is_valid_inbound_type(&cmd.inbound_type) {
             return Err(InboundError::invalid_type(&cmd.inbound_type));
@@ -167,7 +164,6 @@ impl InboundService {
                 return Err(AppError::validation("数量必须 > 0"));
             }
         }
-        cmd.tenant_id = Some(ctx.tenant_id);
         self.repo.create(ctx, &cmd).await
     }
 
@@ -260,6 +256,21 @@ impl InboundService {
             .update_status(ctx.tenant_id, head.id, DocStatus::Completed)
             .await?;
 
+        // 写领域事件(聚合根层事件,outbox publisher 可用于对外推送)
+        let ev_ctx = cuba_events::WriteEventCtx::from(ctx);
+        let _ = cuba_events::write_event(
+            &self.pool_for_events,
+            &ev_ctx,
+            &cuba_events::DomainEvent::InboundSubmitted {
+                inbound_id: head.id,
+                inbound_no: head.inbound_no.clone(),
+                inbound_type: head.inbound_type.clone(),
+                wh_id: head.wh_id,
+                txn_no: committed.txn_no.clone(),
+            },
+        )
+        .await;
+
         Ok(SubmitInboundResult {
             inbound_id: head.id,
             inbound_no: head.inbound_no,
@@ -289,8 +300,6 @@ impl InboundService {
         ctx: &AuditContext,
         q: &QueryInbounds,
     ) -> Result<Vec<InboundHeadView>, AppError> {
-        let mut q = q.clone();
-        q.tenant_id = Some(ctx.tenant_id);
-        self.repo.list(&q).await
+        self.repo.list(ctx.tenant_id, q).await
     }
 }

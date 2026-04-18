@@ -51,9 +51,6 @@ pub struct CreateWarehouseCommand {
     pub wh_type: String,
     #[serde(default)]
     pub remark: Option<String>,
-    /// 租户 id(service 层注入)
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -64,8 +61,6 @@ pub struct UpdateWarehouseCommand {
     pub is_active: bool,
     #[serde(default)]
     pub remark: Option<String>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -74,8 +69,6 @@ pub struct QueryWarehouses {
     pub wh_code: Option<String>,
     pub wh_type: Option<String>,
     pub is_active: Option<bool>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -89,8 +82,6 @@ pub struct CreateLocationCommand {
     pub loc_type: String,
     #[serde(default)]
     pub remark: Option<String>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 fn default_loc_type() -> String {
@@ -105,8 +96,6 @@ pub struct UpdateLocationCommand {
     pub is_active: bool,
     #[serde(default)]
     pub remark: Option<String>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -115,8 +104,6 @@ pub struct QueryLocations {
     pub wh_id: Option<i64>,
     pub loc_type: Option<String>,
     pub is_active: Option<bool>,
-    #[serde(skip)]
-    pub tenant_id: Option<i64>,
 }
 
 // -- Service -----------------------------------------------------------------

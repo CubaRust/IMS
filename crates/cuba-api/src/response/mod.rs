@@ -79,6 +79,9 @@ impl IntoResponse for AppErrorResponse {
             tracing::debug!(error = %err, "business error");
         }
 
+        // 上报到 Prometheus(HTTP 200 的业务错误也算,500 也算)
+        cuba_metrics::record_business_error(err.code().as_u32());
+
         let body: ErrorBody = (&err).into();
         (status, Json(body)).into_response()
     }

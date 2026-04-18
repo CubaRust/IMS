@@ -28,6 +28,7 @@ cuba-pmc = { workspace = true }
 cuba-stocktake = { workspace = true }
 cuba-reporting = { workspace = true }
 cuba-scheduler = { workspace = true }
+cuba-events = { workspace = true }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }

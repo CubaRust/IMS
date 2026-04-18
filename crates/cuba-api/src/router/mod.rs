@@ -20,7 +20,7 @@ use tower_http::{
 use cuba_bootstrap::AppState;
 
 use crate::{
-    middleware::{auth_guard, health, trace_id},
+    middleware::{audit_log, auth_guard, health, http_metrics, live, metrics, ready, trace_id},
     response::not_found_fallback,
 };
 
@@ -52,16 +52,21 @@ pub fn build_router(state: AppState) -> Router {
         .merge(returns_pmc::routes())
         .merge(stocktake_report::routes())
         .nest("/inventory", inventory::routes())
-        .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard));
+        .route_layer(axum_mw::from_fn_with_state(state.clone(), auth_guard))
+        .route_layer(axum_mw::from_fn_with_state(state.clone(), audit_log));
 
     let api_v1 = Router::new().merge(public).merge(protected);
 
     Router::new()
         .nest("/api/v1", api_v1)
         .route("/health", get(health))
+        .route("/live", get(live))
+        .route("/ready", get(ready))
+        .route("/metrics", get(metrics))
         .merge(crate::openapi::swagger_router())
         .fallback(not_found_fallback)
         .layer(axum_mw::from_fn(trace_id))
+        .layer(axum_mw::from_fn(http_metrics))
         .layer(TraceLayer::new_for_http())
         .layer(TimeoutLayer::new(std::time::Duration::from_secs(30)))
         .layer(CompressionLayer::new())

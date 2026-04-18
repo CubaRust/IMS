@@ -45,6 +45,7 @@ pub trait InventoryRepository: Send + Sync {
     /// 查询余额(分页)
     async fn query_balance(
         &self,
+        tenant_id: i64,
         query: &QueryBalance,
         page: PageQuery,
     ) -> Result<PageResponse<BalanceView>, AppError>;
@@ -52,6 +53,7 @@ pub trait InventoryRepository: Send + Sync {
     /// 查询事务头(分页)
     async fn query_txns(
         &self,
+        tenant_id: i64,
         query: &QueryTxns,
         page: PageQuery,
     ) -> Result<PageResponse<TxnHeadView>, AppError>;
@@ -101,6 +103,29 @@ impl InventoryRepository for PgInventoryRepository {
             upsert_balance(&mut tx, ctx.tenant_id, d).await?;
         }
 
+        // 5) 写领域事件(同事务,保证和业务原子)
+        let lines_summary = lines
+            .iter()
+            .map(|l| cuba_events::types::InventoryLineSummary {
+                material_id: l.material_id,
+                batch_no: l.batch_no.clone(),
+                qty: l.qty,
+                io_flag: l.io_flag.as_str().to_string(),
+            })
+            .collect();
+        let event = cuba_events::DomainEvent::InventoryTxnCommitted {
+            txn_id,
+            txn_no: txn_no.clone(),
+            txn_type: head.txn_type.as_str().to_string(),
+            scene_code: head.scene_code.clone(),
+            doc_type: head.doc_type.clone(),
+            doc_no: head.doc_no.clone(),
+            line_count: lines.len(),
+            lines_summary,
+        };
+        let ev_ctx = cuba_events::WriteEventCtx::from(ctx);
+        cuba_events::write_event_tx(&mut tx, &ev_ctx, &event).await?;
+
         tx.commit().await?;
 
         Ok(CommitTxnResult {
@@ -112,13 +137,13 @@ impl InventoryRepository for PgInventoryRepository {
 
     async fn query_balance(
         &self,
+        tenant_id: i64,
         query: &QueryBalance,
         page: PageQuery,
     ) -> Result<PageResponse<BalanceView>, AppError> {
         let p = page.normalize();
 
-        // 独立的 count,避免 QueryBuilder 共用绑定参数的坑
-        let total = count_balance(&self.pool, query).await.unwrap_or(0);
+        let total = count_balance(&self.pool, tenant_id, query).await.unwrap_or(0);
 
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
@@ -132,9 +157,10 @@ impl InventoryRepository for PgInventoryRepository {
               join mdm.mdm_material  m on m.id = b.material_id
               join mdm.mdm_warehouse w on w.id = b.wh_id
               join mdm.mdm_location  l on l.id = b.loc_id
-             where 1 = 1
+             where b.tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         push_balance_filters(&mut qb, query);
 
         qb.push(" order by b.updated_at desc ");
@@ -148,12 +174,13 @@ impl InventoryRepository for PgInventoryRepository {
 
     async fn query_txns(
         &self,
+        tenant_id: i64,
         query: &QueryTxns,
         page: PageQuery,
     ) -> Result<PageResponse<TxnHeadView>, AppError> {
         let p = page.normalize();
 
-        let total = count_txns(&self.pool, query).await.unwrap_or(0);
+        let total = count_txns(&self.pool, tenant_id, query).await.unwrap_or(0);
 
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
@@ -163,9 +190,10 @@ impl InventoryRepository for PgInventoryRepository {
                    is_exception, exception_type, operator_id, related_doc_no,
                    remark, operate_time
               from wms.wms_inventory_txn_h
-             where 1 = 1
+             where tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         push_txn_filters(&mut qb, query);
 
         qb.push(" order by operate_time desc ");
@@ -356,19 +384,21 @@ async fn upsert_balance(
     }
 }
 
-async fn count_balance(pool: &PgPool, query: &QueryBalance) -> Result<i64, AppError> {
+async fn count_balance(
+    pool: &PgPool,
+    tenant_id: i64,
+    query: &QueryBalance,
+) -> Result<i64, AppError> {
     let mut qb = sqlx::QueryBuilder::<Postgres>::new(
-        "select count(*) from wms.wms_inventory_balance b where 1 = 1",
+        "select count(*) from wms.wms_inventory_balance b where b.tenant_id = ",
     );
+    qb.push_bind(tenant_id);
     push_balance_filters(&mut qb, query);
     let c: i64 = qb.build_query_scalar().fetch_one(pool).await?;
     Ok(c)
 }
 
 fn push_balance_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryBalance) {
-    if let Some(t) = query.tenant_id {
-        qb.push(" and b.tenant_id = ").push_bind(t);
-    }
     if let Some(mid) = query.material_id {
         qb.push(" and b.material_id = ").push_bind(mid);
     }
@@ -389,19 +419,21 @@ fn push_balance_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'
     }
 }
 
-async fn count_txns(pool: &PgPool, query: &QueryTxns) -> Result<i64, AppError> {
+async fn count_txns(
+    pool: &PgPool,
+    tenant_id: i64,
+    query: &QueryTxns,
+) -> Result<i64, AppError> {
     let mut qb = sqlx::QueryBuilder::<Postgres>::new(
-        "select count(*) from wms.wms_inventory_txn_h where 1 = 1",
+        "select count(*) from wms.wms_inventory_txn_h where tenant_id = ",
     );
+    qb.push_bind(tenant_id);
     push_txn_filters(&mut qb, query);
     let c: i64 = qb.build_query_scalar().fetch_one(pool).await?;
     Ok(c)
 }
 
 fn push_txn_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryTxns) {
-    if let Some(t) = query.tenant_id {
-        qb.push(" and tenant_id = ").push_bind(t);
-    }
     if let Some(no) = &query.doc_no {
         qb.push(" and doc_no = ").push_bind(no.clone());
     }

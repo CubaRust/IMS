@@ -79,9 +79,7 @@ impl InventoryService {
         query: &QueryBalance,
         page: PageQuery,
     ) -> Result<PageResponse<BalanceView>, AppError> {
-        let mut q = query.clone();
-        q.tenant_id = Some(ctx.tenant_id);
-        self.repo.query_balance(&q, page).await
+        self.repo.query_balance(ctx.tenant_id, query, page).await
     }
 
     pub async fn query_txns(
@@ -90,9 +88,7 @@ impl InventoryService {
         query: &QueryTxns,
         page: PageQuery,
     ) -> Result<PageResponse<TxnHeadView>, AppError> {
-        let mut q = query.clone();
-        q.tenant_id = Some(ctx.tenant_id);
-        self.repo.query_txns(&q, page).await
+        self.repo.query_txns(ctx.tenant_id, query, page).await
     }
 
     pub async fn query_txn_lines(
