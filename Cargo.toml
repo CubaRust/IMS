@@ -22,6 +22,11 @@ members = [
     "crates/cuba-pmc",
     "crates/cuba-reporting",
     "crates/cuba-identity",
+    "crates/cuba-cache",
+    "crates/cuba-docs-gen",
+    "crates/cuba-events",
+    "crates/cuba-metrics",
+    "crates/cuba-scheduler",
 ]
 
 [workspace.package]
@@ -79,6 +84,7 @@ testcontainers-modules = { version = "0.11", features = ["postgres"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 wiremock = "0.6"
 serial_test = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 # --- Auth ---
 jsonwebtoken = "9"
@@ -108,6 +114,19 @@ cuba-supplier-return = { path = "crates/cuba-supplier-return" }
 cuba-pmc = { path = "crates/cuba-pmc" }
 cuba-reporting = { path = "crates/cuba-reporting" }
 cuba-identity = { path = "crates/cuba-identity" }
+cuba-cache = { path = "crates/cuba-cache" }
+cuba-events = { path = "crates/cuba-events" }
+cuba-metrics = { path = "crates/cuba-metrics" }
+cuba-scheduler = { path = "crates/cuba-scheduler" }
+
+# --- Scheduling ---
+tokio-cron-scheduler = "0.13"
+
+# --- Caching ---
+moka = { version = "0.12", features = ["future"] }
+
+# --- Metrics ---
+prometheus = "0.13"
 
 [profile.release]
 opt-level = 3
