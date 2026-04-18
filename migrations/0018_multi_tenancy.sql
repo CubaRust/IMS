@@ -40,9 +40,9 @@ end $$;
 
 -- 3. 给热点表建 tenant 复合索引(最常过滤的维度)-----------------------------
 create index if not exists idx_inv_balance_tenant
-    on inv.balance(tenant_id, wh_id, loc_id, material_id);
+    on wms.wms_inventory_balance(tenant_id, wh_id, loc_id, material_id);
 create index if not exists idx_inv_txn_h_tenant
-    on inv.txn_h(tenant_id, created_at desc);
+    on wms.wms_inventory_txn_h(tenant_id, created_at desc);
 create index if not exists idx_wms_inbound_h_tenant
     on wms.wms_inbound_h(tenant_id, inbound_date desc);
 create index if not exists idx_wms_outbound_h_tenant
@@ -71,3 +71,12 @@ alter table sys.sys_jwt_revocation  add column if not exists tenant_id bigint;
 create index if not exists idx_audit_tenant_time
     on sys.sys_audit_log(tenant_id, created_at desc)
     where tenant_id is not null;
+
+-- 6. 多租户下删掉单列 login_name 唯一约束 -------------------------------------
+-- 老表定义:login_name varchar(100) not null unique
+-- 默认约束名 sys_user_login_name_key(若自定义过需调整)
+alter table sys.sys_user drop constraint if exists sys_user_login_name_key;
+
+-- material_code / wh_code 同理,0018 已建 (tenant_id,xxx) 唯一索引作为代替
+alter table mdm.mdm_material  drop constraint if exists mdm_material_material_code_key;
+alter table mdm.mdm_warehouse drop constraint if exists mdm_warehouse_wh_code_key;

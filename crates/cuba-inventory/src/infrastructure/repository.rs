@@ -57,7 +57,7 @@ pub trait InventoryRepository: Send + Sync {
     ) -> Result<PageResponse<TxnHeadView>, AppError>;
 
     /// 查询事务行
-    async fn query_txn_lines(&self, txn_id: i64) -> Result<Vec<TxnLineView>, AppError>;
+    async fn query_txn_lines(&self, tenant_id: i64, txn_id: i64) -> Result<Vec<TxnLineView>, AppError>;
 }
 
 /// PG 实现
@@ -93,12 +93,12 @@ impl InventoryRepository for PgInventoryRepository {
 
         // 3) 插事务行
         for line in &lines {
-            insert_txn_line(&mut tx, txn_id, line).await?;
+            insert_txn_line(&mut tx, ctx.tenant_id, txn_id, line).await?;
         }
 
         // 4) 按 delta 更新余额
         for d in &deltas {
-            upsert_balance(&mut tx, d).await?;
+            upsert_balance(&mut tx, ctx.tenant_id, d).await?;
         }
 
         tx.commit().await?;
@@ -177,7 +177,7 @@ impl InventoryRepository for PgInventoryRepository {
         Ok(PageResponse::new(p, total, items))
     }
 
-    async fn query_txn_lines(&self, txn_id: i64) -> Result<Vec<TxnLineView>, AppError> {
+    async fn query_txn_lines(&self, tenant_id: i64, txn_id: i64) -> Result<Vec<TxnLineView>, AppError> {
         let rows = sqlx::query(
             r#"
             select d.id, d.txn_id, d.line_no, d.material_id, m.material_code,
@@ -186,11 +186,12 @@ impl InventoryRepository for PgInventoryRepository {
                    d.recoverable_flag, d.scrap_flag, d.note
               from wms.wms_inventory_txn_d d
               join mdm.mdm_material m on m.id = d.material_id
-             where d.txn_id = $1
+             where d.txn_id = $1 and d.tenant_id = $2
              order by d.line_no
             "#,
         )
         .bind(txn_id)
+        .bind(tenant_id)
         .fetch_all(&self.pool)
         .await?;
         Ok(rows.into_iter().map(row_to_txn_line_view).collect())
@@ -219,16 +220,17 @@ async fn insert_txn_head(
     let id: i64 = sqlx::query_scalar(
         r#"
         insert into wms.wms_inventory_txn_h
-            (txn_no, txn_type, scene_code, scene_name, doc_type, doc_no,
+            (tenant_id, txn_no, txn_type, scene_code, scene_name, doc_type, doc_no,
              source_object_type, source_object_id, target_object_type, target_object_id,
              source_wh_id, source_loc_id, target_wh_id, target_loc_id,
              source_status, target_status,
              is_exception, exception_type, operator_id, related_doc_no,
              snapshot_json, remark)
-        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
         returning id
         "#,
     )
+    .bind(ctx.tenant_id)
     .bind(txn_no)
     .bind(head.txn_type.as_str())
     .bind(&head.scene_code)
@@ -259,19 +261,21 @@ async fn insert_txn_head(
 
 async fn insert_txn_line(
     tx: &mut Transaction<'_, Postgres>,
+    tenant_id: i64,
     txn_id: i64,
     line: &TxnLine,
 ) -> Result<(), AppError> {
     sqlx::query(
         r#"
         insert into wms.wms_inventory_txn_d
-            (txn_id, line_no, material_id, batch_no, qty, unit, io_flag,
+            (tenant_id, txn_id, line_no, material_id, batch_no, qty, unit, io_flag,
              source_material_id, target_material_id, stock_status,
              status_change_flag, location_change_flag, item_change_flag,
              recoverable_flag, scrap_flag, note)
-        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         "#,
     )
+    .bind(tenant_id)
     .bind(txn_id)
     .bind(line.line_no)
     .bind(line.material_id)
@@ -295,17 +299,20 @@ async fn insert_txn_line(
 
 async fn upsert_balance(
     tx: &mut Transaction<'_, Postgres>,
+    tenant_id: i64,
     d: &StockDelta,
 ) -> Result<(), AppError> {
-    // 行锁顺序固定:(material_id, wh_id, loc_id, batch_no, stock_status) 升序
-    // PG 内部会对同一行取 X lock,跨事务顺序一致可减少死锁。
-    // 这里 upsert 自带行锁,由 ON CONFLICT 语义保证。
+    // 行锁顺序固定:(tenant_id, material_id, wh_id, loc_id, batch_no, stock_status) 升序
+    // 注:ON CONFLICT 以老表的 (material_id, wh_id, loc_id, batch_no, stock_status)
+    // 为唯一键 + tenant_id 当作普通列。多租户场景下,
+    // 逻辑唯一性靠 (tenant_id, material_id, wh_id, loc_id, batch_no, stock_status),
+    // 但 wh_id/loc_id/material_id 通过 tenant 天然隔离,因此老约束可复用。
     let res = sqlx::query(
         r#"
         insert into wms.wms_inventory_balance
-            (material_id, wh_id, loc_id, batch_no, stock_status,
+            (tenant_id, material_id, wh_id, loc_id, batch_no, stock_status,
              book_qty, available_qty, occupied_qty, bad_qty, scrap_qty, pending_qty)
-        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         on conflict (material_id, wh_id, loc_id, batch_no, stock_status)
         do update set
             book_qty      = wms_inventory_balance.book_qty      + excluded.book_qty,
@@ -317,6 +324,7 @@ async fn upsert_balance(
             updated_at    = now()
         "#,
     )
+    .bind(tenant_id)
     .bind(d.locator.material_id)
     .bind(d.locator.wh_id)
     .bind(d.locator.loc_id)
@@ -358,6 +366,9 @@ async fn count_balance(pool: &PgPool, query: &QueryBalance) -> Result<i64, AppEr
 }
 
 fn push_balance_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryBalance) {
+    if let Some(t) = query.tenant_id {
+        qb.push(" and b.tenant_id = ").push_bind(t);
+    }
     if let Some(mid) = query.material_id {
         qb.push(" and b.material_id = ").push_bind(mid);
     }
@@ -388,6 +399,9 @@ async fn count_txns(pool: &PgPool, query: &QueryTxns) -> Result<i64, AppError> {
 }
 
 fn push_txn_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'a QueryTxns) {
+    if let Some(t) = query.tenant_id {
+        qb.push(" and tenant_id = ").push_bind(t);
+    }
     if let Some(no) = &query.doc_no {
         qb.push(" and doc_no = ").push_bind(no.clone());
     }

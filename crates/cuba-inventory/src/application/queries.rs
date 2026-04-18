@@ -18,6 +18,9 @@ pub struct QueryBalance {
     pub stock_status: Option<StockStatus>,
     /// 只看 book_qty > 0 的记录(过滤历史残留 0 行)
     pub only_positive: bool,
+    /// 租户 id(service 层注入,不从前端传入)
+    #[serde(skip)]
+    pub tenant_id: Option<i64>,
 }
 
 /// 查询事务流水
@@ -29,4 +32,7 @@ pub struct QueryTxns {
     pub doc_type: Option<String>,
     pub date_from: Option<PrimitiveDateTime>,
     pub date_to: Option<PrimitiveDateTime>,
+    /// 租户 id(service 层注入)
+    #[serde(skip)]
+    pub tenant_id: Option<i64>,
 }

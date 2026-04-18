@@ -75,21 +75,31 @@ impl InventoryService {
 
     pub async fn query_balance(
         &self,
+        ctx: &AuditContext,
         query: &QueryBalance,
         page: PageQuery,
     ) -> Result<PageResponse<BalanceView>, AppError> {
-        self.repo.query_balance(query, page).await
+        let mut q = query.clone();
+        q.tenant_id = Some(ctx.tenant_id);
+        self.repo.query_balance(&q, page).await
     }
 
     pub async fn query_txns(
         &self,
+        ctx: &AuditContext,
         query: &QueryTxns,
         page: PageQuery,
     ) -> Result<PageResponse<TxnHeadView>, AppError> {
-        self.repo.query_txns(query, page).await
+        let mut q = query.clone();
+        q.tenant_id = Some(ctx.tenant_id);
+        self.repo.query_txns(&q, page).await
     }
 
-    pub async fn query_txn_lines(&self, txn_id: i64) -> Result<Vec<TxnLineView>, AppError> {
-        self.repo.query_txn_lines(txn_id).await
+    pub async fn query_txn_lines(
+        &self,
+        ctx: &AuditContext,
+        txn_id: i64,
+    ) -> Result<Vec<TxnLineView>, AppError> {
+        self.repo.query_txn_lines(ctx.tenant_id, txn_id).await
     }
 }

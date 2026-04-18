@@ -63,7 +63,7 @@ impl IdentityRepository for PgIdentityRepository {
     async fn find_user_by_login_name(&self, login_name: &str) -> Result<Option<User>, AppError> {
         let row = sqlx::query(
             r#"
-            select id, user_code, user_name, login_name, password_hash,
+            select id, tenant_id, user_code, user_name, login_name, password_hash,
                    mobile, is_active, created_at, updated_at
               from sys.sys_user
              where login_name = $1
@@ -78,7 +78,7 @@ impl IdentityRepository for PgIdentityRepository {
     async fn find_user_by_id(&self, id: i64) -> Result<Option<User>, AppError> {
         let row = sqlx::query(
             r#"
-            select id, user_code, user_name, login_name, password_hash,
+            select id, tenant_id, user_code, user_name, login_name, password_hash,
                    mobile, is_active, created_at, updated_at
               from sys.sys_user
              where id = $1

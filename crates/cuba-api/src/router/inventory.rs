@@ -71,7 +71,7 @@ async fn list_balance(
 ) -> Result<AppJson<PageResponse<BalanceView>>, AppError> {
     ctx.require_permission("inv.balance.view")?;
     let svc = InventoryService::new(state.db().clone());
-    let data = svc.query_balance(&input.filter, input.page).await?;
+    let data = svc.query_balance(&ctx, &input.filter, input.page).await?;
     Ok(AppJson(data))
 }
 
@@ -91,7 +91,7 @@ async fn list_txns(
 ) -> Result<AppJson<PageResponse<TxnHeadView>>, AppError> {
     ctx.require_permission("inv.txn.view")?;
     let svc = InventoryService::new(state.db().clone());
-    let data = svc.query_txns(&input.filter, input.page).await?;
+    let data = svc.query_txns(&ctx, &input.filter, input.page).await?;
     Ok(AppJson(data))
 }
 
@@ -102,6 +102,6 @@ async fn list_txn_lines(
 ) -> Result<AppJson<Vec<TxnLineView>>, AppError> {
     ctx.require_permission("inv.txn.view")?;
     let svc = InventoryService::new(state.db().clone());
-    let data = svc.query_txn_lines(id).await?;
+    let data = svc.query_txn_lines(&ctx, id).await?;
     Ok(AppJson(data))
 }
