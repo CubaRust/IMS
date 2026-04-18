@@ -89,7 +89,7 @@ async fn list_users(
 ) -> Result<AppJson<Vec<UserView>>, AppError> {
     ctx.require_permission("sys.user.manage")?;
     let svc = build_service(&state);
-    Ok(AppJson(svc.list_users(&q).await?))
+    Ok(AppJson(svc.list_users(&ctx, &q).await?))
 }
 
 async fn list_roles(

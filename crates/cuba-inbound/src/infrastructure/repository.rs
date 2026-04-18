@@ -20,9 +20,14 @@ pub trait InboundRepository: Send + Sync {
         cmd: &CreateInboundCommand,
     ) -> Result<InboundHeadView, AppError>;
 
-    async fn get(&self, id: i64) -> Result<InboundHeadView, AppError>;
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<InboundHeadView, AppError>;
     async fn list(&self, q: &QueryInbounds) -> Result<Vec<InboundHeadView>, AppError>;
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError>;
 }
 
 pub struct PgInboundRepository {
@@ -50,17 +55,20 @@ impl InboundRepository for PgInboundRepository {
                 .fetch_one(&mut *tx)
                 .await?;
 
+        let tenant_id = cmd.tenant_id.unwrap_or(ctx.tenant_id);
+
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into wms.wms_inbound_h
-                (inbound_no, inbound_type, supplier_id,
+                (tenant_id, inbound_no, inbound_type, supplier_id,
                  source_object_type, source_object_id,
                  wh_id, loc_id, inbound_date, operator_id,
                  doc_status, remark)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'DRAFT',$10)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DRAFT',$11)
             returning id
             "#,
         )
+        .bind(tenant_id)
         .bind(&inbound_no)
         .bind(&cmd.inbound_type)
         .bind(cmd.supplier_id)
@@ -83,11 +91,12 @@ impl InboundRepository for PgInboundRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_inbound_d
-                    (inbound_id, line_no, material_id, batch_no, qty, unit, stock_status,
+                    (tenant_id, inbound_id, line_no, material_id, batch_no, qty, unit, stock_status,
                      work_order_no, process_name, outsource_no, related_preissue_line_id, note)
-                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
                 "#,
             )
+            .bind(tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -105,10 +114,10 @@ impl InboundRepository for PgInboundRepository {
         }
 
         tx.commit().await?;
-        self.get(id).await
+        self.get(tenant_id, id).await
     }
 
-    async fn get(&self, id: i64) -> Result<InboundHeadView, AppError> {
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<InboundHeadView, AppError> {
         let head = sqlx::query(
             r#"
             select h.id, h.inbound_no, h.inbound_type, h.supplier_id,
@@ -121,10 +130,11 @@ impl InboundRepository for PgInboundRepository {
               left join mdm.mdm_supplier  s on s.id = h.supplier_id
               left join mdm.mdm_warehouse w on w.id = h.wh_id
               left join mdm.mdm_location  l on l.id = h.loc_id
-             where h.id = $1
+             where h.id = $1 and h.tenant_id = $2
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::not_found(format!("入库单 id={id} 不存在")))?;
@@ -137,11 +147,12 @@ impl InboundRepository for PgInboundRepository {
                    d.related_preissue_line_id, d.note
               from wms.wms_inbound_d d
               left join mdm.mdm_material m on m.id = d.material_id
-             where d.inbound_id = $1
+             where d.inbound_id = $1 and d.tenant_id = $2
              order by d.line_no
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_all(&self.pool)
         .await?
         .into_iter()
@@ -167,6 +178,9 @@ impl InboundRepository for PgInboundRepository {
              where 1 = 1
             "#,
         );
+        if let Some(t) = q.tenant_id {
+            qb.push(" and h.tenant_id = ").push_bind(t);
+        }
         if let Some(no) = &q.inbound_no {
             qb.push(" and h.inbound_no = ").push_bind(no.clone());
         }
@@ -192,11 +206,19 @@ impl InboundRepository for PgInboundRepository {
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
     }
 
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError> {
-        sqlx::query("update wms.wms_inbound_h set doc_status = $1 where id = $2")
-            .bind(status.as_str())
-            .bind(id)
-            .execute(&self.pool)
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            "update wms.wms_inbound_h set doc_status = $1 where id = $2 and tenant_id = $3",
+        )
+        .bind(status.as_str())
+        .bind(id)
+        .bind(tenant_id)
+        .execute(&self.pool)
             .await?;
         Ok(())
     }

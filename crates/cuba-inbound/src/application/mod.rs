@@ -80,6 +80,9 @@ pub struct CreateInboundCommand {
     #[serde(default)]
     pub remark: Option<String>,
     pub lines: Vec<CreateInboundLine>,
+    /// 租户 id(service 层注入,不从前端传入)
+    #[serde(skip)]
+    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -115,6 +118,8 @@ pub struct QueryInbounds {
     pub doc_status: Option<String>,
     pub date_from: Option<Date>,
     pub date_to: Option<Date>,
+    #[serde(skip)]
+    pub tenant_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -148,7 +153,7 @@ impl InboundService {
     pub async fn create(
         &self,
         ctx: &AuditContext,
-        cmd: CreateInboundCommand,
+        mut cmd: CreateInboundCommand,
     ) -> Result<InboundHeadView, AppError> {
         if !is_valid_inbound_type(&cmd.inbound_type) {
             return Err(InboundError::invalid_type(&cmd.inbound_type));
@@ -162,6 +167,7 @@ impl InboundService {
                 return Err(AppError::validation("数量必须 > 0"));
             }
         }
+        cmd.tenant_id = Some(ctx.tenant_id);
         self.repo.create(ctx, &cmd).await
     }
 
@@ -171,7 +177,7 @@ impl InboundService {
         ctx: &AuditContext,
         id: i64,
     ) -> Result<SubmitInboundResult, AppError> {
-        let head = self.repo.get(id).await?;
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
             return Err(InboundError::invalid_transition(&head.doc_status, "submit"));
@@ -251,7 +257,7 @@ impl InboundService {
 
         // 单据状态推进
         self.repo
-            .update_status(head.id, DocStatus::Completed)
+            .update_status(ctx.tenant_id, head.id, DocStatus::Completed)
             .await?;
 
         Ok(SubmitInboundResult {
@@ -263,20 +269,28 @@ impl InboundService {
     }
 
     /// 作废(仅 DRAFT / SUBMITTED)
-    pub async fn void(&self, _ctx: &AuditContext, id: i64) -> Result<(), AppError> {
-        let head = self.repo.get(id).await?;
+    pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !status.can_void() {
             return Err(InboundError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(head.id, DocStatus::Voided).await
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Voided)
+            .await
     }
 
-    pub async fn get(&self, id: i64) -> Result<InboundHeadView, AppError> {
-        self.repo.get(id).await
+    pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<InboundHeadView, AppError> {
+        self.repo.get(ctx.tenant_id, id).await
     }
 
-    pub async fn list(&self, q: &QueryInbounds) -> Result<Vec<InboundHeadView>, AppError> {
-        self.repo.list(q).await
+    pub async fn list(
+        &self,
+        ctx: &AuditContext,
+        q: &QueryInbounds,
+    ) -> Result<Vec<InboundHeadView>, AppError> {
+        let mut q = q.clone();
+        q.tenant_id = Some(ctx.tenant_id);
+        self.repo.list(&q).await
     }
 }

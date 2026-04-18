@@ -50,7 +50,7 @@ async fn list_inbounds(
     Query(q): Query<QueryInbounds>,
 ) -> Result<AppJson<Vec<InboundHeadView>>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(InboundService::new(state.db().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_inbound(
@@ -59,7 +59,7 @@ async fn get_inbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<InboundHeadView>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(InboundService::new(state.db().clone()).get(&ctx, id).await?))
 }
 
 async fn create_inbound(

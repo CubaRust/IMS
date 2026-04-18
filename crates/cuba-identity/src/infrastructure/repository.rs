@@ -172,6 +172,9 @@ impl IdentityRepository for PgIdentityRepository {
 
         qb.push(" where 1 = 1 ");
 
+        if let Some(t) = q.tenant_id {
+            qb.push(" and u.tenant_id = ").push_bind(t);
+        }
         if let Some(login) = &q.login_name {
             qb.push(" and u.login_name ilike ").push_bind(format!("%{login}%"));
         }
