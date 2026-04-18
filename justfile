@@ -114,6 +114,12 @@ balance:
 flow:
     docker compose exec pg psql -U cuba -d cuba_ims -c "select id, txn_no, txn_type, scene_code, doc_type, doc_no, created_at from inv.txn_h order by id desc limit 20;"
 
+# ---------- 文档 ----------
+
+# 扫源码生成错误码表(JSON + MD)
+docs-errors:
+    cargo run -p cuba-docs-gen --bin errorcodes
+
 # ---------- Docker 镜像 ----------
 
 # 构建生产镜像
