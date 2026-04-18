@@ -42,7 +42,7 @@ end $$;
 create index if not exists idx_inv_balance_tenant
     on wms.wms_inventory_balance(tenant_id, wh_id, loc_id, material_id);
 create index if not exists idx_inv_txn_h_tenant
-    on wms.wms_inventory_txn_h(tenant_id, created_at desc);
+    on wms.wms_inventory_txn_h(tenant_id, operate_time desc);
 create index if not exists idx_wms_inbound_h_tenant
     on wms.wms_inbound_h(tenant_id, inbound_date desc);
 create index if not exists idx_wms_outbound_h_tenant

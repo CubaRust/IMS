@@ -44,7 +44,7 @@ values
     ('RM-LCD-001',       '屏幕-6.1寸',          'RAW', '6.1英寸',     '厂商C', 'PCS', null, false, true, true, 800,  150),
     ('RM-OCA-001',       'OCA胶',               'PUBLIC', '标准规格', '厂商D', 'PCS', null, false, false, true, 2000, 500),
     ('RM-FILM-001',      '保护膜',              'PUBLIC', '标准规格', '厂商E', 'PCS', null, false, false, true, 3000, 500)
-on conflict (material_code) do nothing;
+on conflict (tenant_id, material_code) do nothing;
 
 -- 3.2 半成品
 insert into mdm.mdm_material
@@ -53,7 +53,7 @@ insert into mdm.mdm_material
 values
     ('SEMI-FOG-001', 'FOG-6.1寸', 'SEMI', '6.1英寸', 'PCS', 'FOG', true, true, true),
     ('SEMI-TP-001',  'TP-6.1寸',  'SEMI', '6.1英寸', 'PCS', 'TP',  true, true, true)
-on conflict (material_code) do nothing;
+on conflict (tenant_id, material_code) do nothing;
 
 -- 3.3 成品
 insert into mdm.mdm_material
@@ -62,7 +62,7 @@ insert into mdm.mdm_material
 values
     ('FG-ASM-001', '总成-6.1寸-路线1(TP+屏幕)',  'FINISHED', '6.1英寸', 'PCS', 'ASM', true, true, true),
     ('FG-ASM-002', '总成-6.1寸-路线2(盖板+屏幕)','FINISHED', '6.1英寸', 'PCS', 'ASM', true, true, true)
-on conflict (material_code) do nothing;
+on conflict (tenant_id, material_code) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- 4. 工艺路线
