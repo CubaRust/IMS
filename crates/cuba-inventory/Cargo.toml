@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 cuba-shared = { workspace = true }
+cuba-metrics = { workspace = true }
 
 tokio = { workspace = true }
 serde = { workspace = true }

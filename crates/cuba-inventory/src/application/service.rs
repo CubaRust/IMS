@@ -60,10 +60,17 @@ impl InventoryService {
         ctx: &AuditContext,
         cmd: CommitTxnCommand,
     ) -> Result<CommitTxnResult, AppError> {
+        let txn_type = cmd.txn_type.as_str().to_string();
+        let scene_code = cmd.scene_code.clone();
         let (head, lines) = cmd.into_domain(Some(ctx.user_id));
-        rules::validate_txn(&head, &lines)?;
-        let deltas = rules::compute_deltas(&head, &lines)?;
-        self.repo.commit_txn(ctx, head, lines, deltas).await
+        let result = async {
+            rules::validate_txn(&head, &lines)?;
+            let deltas = rules::compute_deltas(&head, &lines)?;
+            self.repo.commit_txn(ctx, head, lines, deltas).await
+        }
+        .await;
+        cuba_metrics::record_txn(&txn_type, &scene_code, result.is_ok());
+        result
     }
 
     pub async fn query_balance(

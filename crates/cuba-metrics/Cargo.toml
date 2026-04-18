@@ -1,0 +1,10 @@
+[package]
+name = "cuba-metrics"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+prometheus = { workspace = true }
+once_cell = { workspace = true }
+tracing = { workspace = true }

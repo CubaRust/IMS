@@ -96,3 +96,100 @@ pub async fn auth_guard(
 pub async fn health() -> (StatusCode, &'static str) {
     (StatusCode::OK, "ok")
 }
+
+/// `/metrics` — Prometheus 指标导出
+pub async fn metrics() -> (StatusCode, [(header::HeaderName, HeaderValue); 1], String) {
+    let body = cuba_metrics::gather_text();
+    (
+        StatusCode::OK,
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; version=0.0.4"),
+        )],
+        body,
+    )
+}
+
+/// HTTP metrics 中间件 — 记录 cuba_http_requests_total / duration
+pub async fn http_metrics(req: Request<Body>, next: Next) -> Response {
+    let method = req.method().to_string();
+    let path = req.uri().path().to_string();
+    let start = std::time::Instant::now();
+    let resp = next.run(req).await;
+    let elapsed = start.elapsed().as_secs_f64();
+    cuba_metrics::record_http(&method, &path, resp.status().as_u16(), elapsed);
+    resp
+}
+
+// ---------------------------------------------------------------------------
+// 审计日志中间件
+// ---------------------------------------------------------------------------
+
+/// 审计日志中间件
+///
+/// 在请求完成后,**异步**(spawn)写一行到 `sys.sys_audit_log`。
+/// 写日志失败仅 warn,不影响请求结果。
+///
+/// 挂载方式:在根路由的 `protected` 分支上挂,只记录受保护请求:
+/// ```ignore
+/// .layer(axum_mw::from_fn_with_state(state.clone(), audit_log))
+/// ```
+pub async fn audit_log(
+    State(state): State<AppState>,
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    let method = req.method().to_string();
+    let path = req.uri().path().to_string();
+    let trace_id = req
+        .headers()
+        .get(TRACE_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .map(String::from);
+    let user_agent = req
+        .headers()
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .map(String::from);
+    // 注:ip 需要上游 TrustedProxy 头或 ConnectInfo,本期先空
+    let ip: Option<String> = None;
+
+    // 取出 AuditContext(如果已在 auth_guard 里放了)
+    let ctx = req.extensions().get::<AuditContext>().cloned();
+    let user_id = ctx.as_ref().map(|c| c.user_id);
+    let login_name = ctx.as_ref().map(|c| c.login_name.clone());
+
+    let start = std::time::Instant::now();
+    let resp = next.run(req).await;
+    let elapsed_ms = start.elapsed().as_millis() as i32;
+    let http_status = resp.status().as_u16() as i32;
+
+    let pool = state.db().clone();
+    tokio::spawn(async move {
+        if let Err(e) = sqlx::query(
+            r#"
+            insert into sys.sys_audit_log
+                (trace_id, user_id, login_name,
+                 http_method, http_path, http_status,
+                 ip, user_agent, duration_ms)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            "#,
+        )
+        .bind(&trace_id)
+        .bind(user_id)
+        .bind(&login_name)
+        .bind(&method)
+        .bind(&path)
+        .bind(http_status)
+        .bind(&ip)
+        .bind(&user_agent)
+        .bind(elapsed_ms)
+        .execute(&pool)
+        .await
+        {
+            tracing::warn!(error = %e, "audit log insert failed");
+        }
+    });
+
+    resp
+}
