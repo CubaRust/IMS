@@ -55,6 +55,15 @@ fn build_service(state: &AppState) -> IdentityService {
     )
 }
 
+/// 只读 service:me / list_users / list_roles / list_permissions 用
+fn build_read_service(state: &AppState) -> IdentityService {
+    IdentityService::new(
+        state.db_read().clone(),
+        &state.config().jwt_secret,
+        state.config().jwt_ttl_seconds,
+    )
+}
+
 async fn login(
     State(state): State<AppState>,
     Json(cmd): Json<LoginCommand>,
@@ -68,7 +77,7 @@ async fn me(
     State(state): State<AppState>,
     Extension(ctx): Extension<AuditContext>,
 ) -> Result<AppJson<UserView>, AppError> {
-    let svc = build_service(&state);
+    let svc = build_read_service(&state);
     Ok(AppJson(svc.me(&ctx).await?))
 }
 
@@ -88,7 +97,7 @@ async fn list_users(
     Query(q): Query<QueryUsers>,
 ) -> Result<AppJson<Vec<UserView>>, AppError> {
     ctx.require_permission("sys.user.manage")?;
-    let svc = build_service(&state);
+    let svc = build_read_service(&state);
     Ok(AppJson(svc.list_users(&ctx, &q).await?))
 }
 
@@ -97,7 +106,7 @@ async fn list_roles(
     Extension(ctx): Extension<AuditContext>,
 ) -> Result<AppJson<Vec<RoleView>>, AppError> {
     ctx.require_permission("sys.role.manage")?;
-    let svc = build_service(&state);
+    let svc = build_read_service(&state);
     Ok(AppJson(svc.list_roles().await?))
 }
 
@@ -106,7 +115,7 @@ async fn list_permissions(
     Extension(ctx): Extension<AuditContext>,
 ) -> Result<AppJson<Vec<PermissionView>>, AppError> {
     ctx.require_permission("sys.role.manage")?;
-    let svc = build_service(&state);
+    let svc = build_read_service(&state);
     Ok(AppJson(svc.list_permissions().await?))
 }
 

@@ -43,7 +43,7 @@ async fn list_warehouses(
     Query(q): Query<QueryWarehouses>,
 ) -> Result<AppJson<Vec<WarehouseView>>, AppError> {
     ctx.require_permission("mdm.warehouse.view")?;
-    let svc = WarehouseService::new(state.db().clone());
+    let svc = WarehouseService::new(state.db_read().clone());
     Ok(AppJson(svc.list_warehouses(&q).await?))
 }
 
@@ -53,7 +53,7 @@ async fn get_warehouse(
     Path(id): Path<i64>,
 ) -> Result<AppJson<WarehouseView>, AppError> {
     ctx.require_permission("mdm.warehouse.view")?;
-    let svc = WarehouseService::new(state.db().clone());
+    let svc = WarehouseService::new(state.db_read().clone());
     Ok(AppJson(svc.get_warehouse(id).await?))
 }
 
@@ -86,7 +86,7 @@ async fn list_locations(
     Query(q): Query<QueryLocations>,
 ) -> Result<AppJson<Vec<LocationView>>, AppError> {
     ctx.require_permission("mdm.warehouse.view")?;
-    let svc = WarehouseService::new(state.db().clone());
+    let svc = WarehouseService::new(state.db_read().clone());
     Ok(AppJson(svc.list_locations(&q).await?))
 }
 
@@ -96,7 +96,7 @@ async fn get_location(
     Path(id): Path<i64>,
 ) -> Result<AppJson<LocationView>, AppError> {
     ctx.require_permission("mdm.warehouse.view")?;
-    let svc = WarehouseService::new(state.db().clone());
+    let svc = WarehouseService::new(state.db_read().clone());
     Ok(AppJson(svc.get_location(id).await?))
 }
 

@@ -49,7 +49,7 @@ async fn commit_txn(
     Json(cmd): Json<CommitTxnCommand>,
 ) -> Result<AppJson<CommitTxnResult>, AppError> {
     ctx.require_permission("inv.txn.commit")?;
-    let svc = InventoryService::new(state.db().clone());
+    let svc = InventoryService::new(state.db_read().clone());
     let result = svc.commit(&ctx, cmd).await?;
     Ok(AppJson(result))
 }
@@ -70,7 +70,7 @@ async fn list_balance(
     Query(input): Query<BalanceQueryIn>,
 ) -> Result<AppJson<PageResponse<BalanceView>>, AppError> {
     ctx.require_permission("inv.balance.view")?;
-    let svc = InventoryService::new(state.db().clone());
+    let svc = InventoryService::new(state.db_read().clone());
     let data = svc.query_balance(&ctx, &input.filter, input.page).await?;
     Ok(AppJson(data))
 }
@@ -90,7 +90,7 @@ async fn list_txns(
     Query(input): Query<TxnQueryIn>,
 ) -> Result<AppJson<PageResponse<TxnHeadView>>, AppError> {
     ctx.require_permission("inv.txn.view")?;
-    let svc = InventoryService::new(state.db().clone());
+    let svc = InventoryService::new(state.db_read().clone());
     let data = svc.query_txns(&ctx, &input.filter, input.page).await?;
     Ok(AppJson(data))
 }
@@ -101,7 +101,7 @@ async fn list_txn_lines(
     Path(id): Path<i64>,
 ) -> Result<AppJson<Vec<TxnLineView>>, AppError> {
     ctx.require_permission("inv.txn.view")?;
-    let svc = InventoryService::new(state.db().clone());
+    let svc = InventoryService::new(state.db_read().clone());
     let data = svc.query_txn_lines(&ctx, id).await?;
     Ok(AppJson(data))
 }

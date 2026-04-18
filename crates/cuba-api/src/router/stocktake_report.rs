@@ -52,7 +52,7 @@ async fn st_list(
     Query(q): Query<QueryStocktakes>,
 ) -> Result<AppJson<Vec<StocktakeHeadView>>, AppError> {
     ctx.require_permission("stocktake.view")?;
-    Ok(AppJson(StocktakeService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(StocktakeService::new(state.db_read().clone()).list(&q).await?))
 }
 async fn st_get(
     State(state): State<AppState>,
@@ -60,7 +60,7 @@ async fn st_get(
     Path(id): Path<i64>,
 ) -> Result<AppJson<StocktakeHeadView>, AppError> {
     ctx.require_permission("stocktake.view")?;
-    Ok(AppJson(StocktakeService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(StocktakeService::new(state.db_read().clone()).get(id).await?))
 }
 async fn st_create(
     State(state): State<AppState>,
@@ -111,7 +111,7 @@ async fn rpt_aging(
     Query(q): Query<QueryAging>,
 ) -> Result<AppJson<Vec<AgingBucketRow>>, AppError> {
     ctx.require_permission("report.view")?;
-    Ok(AppJson(ReportingService::new(state.db().clone()).aging(&q).await?))
+    Ok(AppJson(ReportingService::new(state.db_read().clone()).aging(&q).await?))
 }
 async fn rpt_dormant(
     State(state): State<AppState>,
@@ -119,7 +119,7 @@ async fn rpt_dormant(
     Query(q): Query<QueryDormant>,
 ) -> Result<AppJson<Vec<DormantRow>>, AppError> {
     ctx.require_permission("report.view")?;
-    Ok(AppJson(ReportingService::new(state.db().clone()).dormant(&q).await?))
+    Ok(AppJson(ReportingService::new(state.db_read().clone()).dormant(&q).await?))
 }
 async fn rpt_exception(
     State(state): State<AppState>,
@@ -127,7 +127,7 @@ async fn rpt_exception(
     Query(q): Query<QueryExceptionSummary>,
 ) -> Result<AppJson<Vec<ExceptionSummaryRow>>, AppError> {
     ctx.require_permission("report.view")?;
-    Ok(AppJson(ReportingService::new(state.db().clone()).exception_summary(&q).await?))
+    Ok(AppJson(ReportingService::new(state.db_read().clone()).exception_summary(&q).await?))
 }
 async fn rpt_txn_flow(
     State(state): State<AppState>,
@@ -135,5 +135,5 @@ async fn rpt_txn_flow(
     Query(q): Query<QueryTxnFlow>,
 ) -> Result<AppJson<Vec<TxnFlowRow>>, AppError> {
     ctx.require_permission("report.view")?;
-    Ok(AppJson(ReportingService::new(state.db().clone()).txn_flow(&q).await?))
+    Ok(AppJson(ReportingService::new(state.db_read().clone()).txn_flow(&q).await?))
 }

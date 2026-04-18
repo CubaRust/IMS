@@ -59,7 +59,7 @@ async fn list_defects(
     Query(q): Query<QueryDefects>,
 ) -> Result<AppJson<Vec<DefectHeadView>>, AppError> {
     ctx.require_permission("defect.view")?;
-    Ok(AppJson(DefectService::new(state.db().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(DefectService::new(state.db_read().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_defect(
@@ -68,7 +68,7 @@ async fn get_defect(
     Path(id): Path<i64>,
 ) -> Result<AppJson<DefectHeadView>, AppError> {
     ctx.require_permission("defect.view")?;
-    Ok(AppJson(DefectService::new(state.db().clone()).get(&ctx, id).await?))
+    Ok(AppJson(DefectService::new(state.db_read().clone()).get(&ctx, id).await?))
 }
 
 async fn create_defect(
@@ -163,7 +163,7 @@ async fn list_recoveries(
     Query(q): Query<QueryRecoveries>,
 ) -> Result<AppJson<Vec<RecoveryHeadView>>, AppError> {
     ctx.require_permission("recovery.view")?;
-    Ok(AppJson(RecoveryService::new(state.db().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(RecoveryService::new(state.db_read().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_recovery(
@@ -172,7 +172,7 @@ async fn get_recovery(
     Path(id): Path<i64>,
 ) -> Result<AppJson<RecoveryHeadView>, AppError> {
     ctx.require_permission("recovery.view")?;
-    Ok(AppJson(RecoveryService::new(state.db().clone()).get(&ctx, id).await?))
+    Ok(AppJson(RecoveryService::new(state.db_read().clone()).get(&ctx, id).await?))
 }
 
 async fn create_recovery(

@@ -52,7 +52,7 @@ async fn list_materials(
     Query(q): Query<QueryMaterials>,
 ) -> Result<AppJson<PageResponse<MaterialView>>, AppError> {
     ctx.require_permission("mdm.material.view")?;
-    Ok(AppJson(MaterialService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(MaterialService::new(state.db_read().clone()).list(&q).await?))
 }
 
 async fn get_material(
@@ -61,7 +61,7 @@ async fn get_material(
     Path(id): Path<i64>,
 ) -> Result<AppJson<MaterialView>, AppError> {
     ctx.require_permission("mdm.material.view")?;
-    Ok(AppJson(MaterialService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(MaterialService::new(state.db_read().clone()).get(id).await?))
 }
 
 async fn create_material(
@@ -93,7 +93,7 @@ async fn list_suppliers(
     Query(q): Query<QuerySuppliers>,
 ) -> Result<AppJson<Vec<SupplierView>>, AppError> {
     ctx.require_permission("mdm.material.view")?; // 复用 mdm.view 权限
-    Ok(AppJson(PartyService::new(state.db().clone()).list_suppliers(&q).await?))
+    Ok(AppJson(PartyService::new(state.db_read().clone()).list_suppliers(&q).await?))
 }
 
 async fn get_supplier(
@@ -102,7 +102,7 @@ async fn get_supplier(
     Path(id): Path<i64>,
 ) -> Result<AppJson<SupplierView>, AppError> {
     ctx.require_permission("mdm.material.view")?;
-    Ok(AppJson(PartyService::new(state.db().clone()).get_supplier(id).await?))
+    Ok(AppJson(PartyService::new(state.db_read().clone()).get_supplier(id).await?))
 }
 
 async fn create_supplier(
@@ -134,7 +134,7 @@ async fn list_customers(
     Query(q): Query<QueryCustomers>,
 ) -> Result<AppJson<Vec<CustomerView>>, AppError> {
     ctx.require_permission("mdm.material.view")?;
-    Ok(AppJson(PartyService::new(state.db().clone()).list_customers(&q).await?))
+    Ok(AppJson(PartyService::new(state.db_read().clone()).list_customers(&q).await?))
 }
 
 async fn get_customer(
@@ -143,7 +143,7 @@ async fn get_customer(
     Path(id): Path<i64>,
 ) -> Result<AppJson<CustomerView>, AppError> {
     ctx.require_permission("mdm.material.view")?;
-    Ok(AppJson(PartyService::new(state.db().clone()).get_customer(id).await?))
+    Ok(AppJson(PartyService::new(state.db_read().clone()).get_customer(id).await?))
 }
 
 async fn create_customer(
@@ -175,7 +175,7 @@ async fn list_boms(
     Query(q): Query<QueryBoms>,
 ) -> Result<AppJson<Vec<BomHeadView>>, AppError> {
     ctx.require_permission("mdm.bom.view")?;
-    Ok(AppJson(BomService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(BomService::new(state.db_read().clone()).list(&q).await?))
 }
 
 async fn get_bom(
@@ -184,7 +184,7 @@ async fn get_bom(
     Path(id): Path<i64>,
 ) -> Result<AppJson<BomHeadView>, AppError> {
     ctx.require_permission("mdm.bom.view")?;
-    Ok(AppJson(BomService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(BomService::new(state.db_read().clone()).get(id).await?))
 }
 
 async fn create_bom(
@@ -204,7 +204,7 @@ async fn list_routes(
     Query(q): Query<QueryRoutes>,
 ) -> Result<AppJson<Vec<RouteHeadView>>, AppError> {
     ctx.require_permission("mdm.route.view")?;
-    Ok(AppJson(RouteService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(RouteService::new(state.db_read().clone()).list(&q).await?))
 }
 
 async fn get_route(
@@ -213,7 +213,7 @@ async fn get_route(
     Path(id): Path<i64>,
 ) -> Result<AppJson<RouteHeadView>, AppError> {
     ctx.require_permission("mdm.route.view")?;
-    Ok(AppJson(RouteService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(RouteService::new(state.db_read().clone()).get(id).await?))
 }
 
 async fn create_route(

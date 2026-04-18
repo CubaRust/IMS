@@ -50,7 +50,7 @@ async fn list_inbounds(
     Query(q): Query<QueryInbounds>,
 ) -> Result<AppJson<Vec<InboundHeadView>>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(InboundService::new(state.db_read().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_inbound(
@@ -59,7 +59,7 @@ async fn get_inbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<InboundHeadView>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db().clone()).get(&ctx, id).await?))
+    Ok(AppJson(InboundService::new(state.db_read().clone()).get(&ctx, id).await?))
 }
 
 async fn create_inbound(
@@ -102,7 +102,7 @@ async fn list_outbounds(
     Query(q): Query<QueryOutbounds>,
 ) -> Result<AppJson<Vec<OutboundHeadView>>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(OutboundService::new(state.db_read().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_outbound(
@@ -111,7 +111,7 @@ async fn get_outbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<OutboundHeadView>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db().clone()).get(&ctx, id).await?))
+    Ok(AppJson(OutboundService::new(state.db_read().clone()).get(&ctx, id).await?))
 }
 
 async fn create_outbound(
