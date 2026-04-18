@@ -30,10 +30,7 @@ use super::{
     dto::{PermissionView, RoleView, UserView},
     queries::QueryUsers,
 };
-use crate::domain::{
-    errors::IdentityError,
-    model::is_strong_password,
-};
+use crate::domain::{errors::IdentityError, model::is_strong_password};
 use crate::infrastructure::repository::{IdentityRepository, PgIdentityRepository};
 
 #[derive(Clone)]
@@ -111,6 +108,7 @@ impl IdentityService {
             token,
             expires_at: exp,
             user_id: user.id,
+            user_code: user.user_code,
             login_name: user.login_name,
             user_name: user.user_name,
             roles,
@@ -176,11 +174,7 @@ impl IdentityService {
     }
 
     /// 强制下线指定用户(管理员用)
-    pub async fn force_logout(
-        &self,
-        _ctx: &AuditContext,
-        user_id: i64,
-    ) -> Result<u64, AppError> {
+    pub async fn force_logout(&self, _ctx: &AuditContext, user_id: i64) -> Result<u64, AppError> {
         // 本期策略:清理该用户所有未过期 jti 不现实(没存)。
         // 所以给出"强制改密"的等价路径:admin 调 revoke_all_for_user 会给一个哨兵行。
         // 真要精确只吊销某 jti,让用户自己 logout 即可。

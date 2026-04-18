@@ -147,7 +147,8 @@ impl StocktakeService {
             return Err(AppError::business(ST_EMPTY, "显式模式下盘点行不能为空"));
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
         }
         self.repo.create(ctx, &cmd).await
     }
@@ -178,15 +179,12 @@ impl StocktakeService {
 
         // 所有行必须已点
         if head.lines.iter().any(|l| !l.counted) {
-            return Err(AppError::business(
-                ST_NOT_COUNTED,
-                "存在未录入实盘数量的行",
-            ));
+            return Err(AppError::business(ST_NOT_COUNTED, "存在未录入实盘数量的行"));
         }
 
-        let loc_id = head.loc_id.ok_or_else(|| {
-            AppError::validation("盘点单缺少 loc_id,无法调整")
-        })?;
+        let loc_id = head
+            .loc_id
+            .ok_or_else(|| AppError::validation("盘点单缺少 loc_id,无法调整"))?;
 
         // 按差异分成 gain / loss 两组,每组一笔 IN / OUT
         let mut gain_lines: Vec<TxnLineInput> = Vec::new();

@@ -11,8 +11,7 @@ pub const DEF_INVALID_TRANSITION: ErrorCode = ErrorCode::custom(40105);
 
 pub const DEFECT_SOURCES: &[&str] = &["IQC", "PROD", "CUSTOMER_RETURN", "OUTSOURCE"];
 pub const PRODUCT_STAGES: &[&str] = &["RAW", "FOG", "TP", "ASM"];
-pub const PROCESS_METHODS: &[&str] =
-    &["TO_BAD_STOCK", "TO_DISMANTLE", "TO_SCRAP", "TO_REWORK"];
+pub const PROCESS_METHODS: &[&str] = &["TO_BAD_STOCK", "TO_DISMANTLE", "TO_SCRAP", "TO_REWORK"];
 
 #[must_use]
 pub fn is_valid_source(v: &str) -> bool {

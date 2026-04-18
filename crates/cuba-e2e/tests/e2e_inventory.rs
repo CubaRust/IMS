@@ -139,13 +139,23 @@ async fn inventory_raw_in_then_transfer_between_status() {
             where wh_id=$1 and loc_id=$2 and material_id=$3
               and batch_no='INV-B1' and stock_status='TO_CHECK'"#,
     )
-    .bind(wh).bind(loc).bind(mat).fetch_one(&pool).await.unwrap();
+    .bind(wh)
+    .bind(loc)
+    .bind(mat)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     let qualified: rust_decimal::Decimal = sqlx::query_scalar(
         r#"select coalesce(sum(book_qty),0) from inv.balance
             where wh_id=$1 and loc_id=$2 and material_id=$3
               and batch_no='INV-B1' and stock_status='QUALIFIED'"#,
     )
-    .bind(wh).bind(loc).bind(mat).fetch_one(&pool).await.unwrap();
+    .bind(wh)
+    .bind(loc)
+    .bind(mat)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
 
     assert_eq!(to_check, dec("20"));
     assert_eq!(qualified, dec("30"));

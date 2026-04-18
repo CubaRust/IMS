@@ -3,7 +3,7 @@
 //! 衡量 `validate_txn` 和 `compute_deltas` 在不同规模下的耗时。
 //! 跑:`cargo bench -p cuba-inventory`
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rust_decimal::Decimal;
 
 use cuba_inventory::domain::{

@@ -21,7 +21,10 @@ async fn admin_login_default_password_works() {
 
     assert!(!result.token.is_empty());
     assert_eq!(result.login_name, "admin");
-    assert!(result.permissions.len() > 0, "admin should have permissions");
+    assert!(
+        !result.permissions.is_empty(),
+        "admin should have permissions"
+    );
 }
 
 #[tokio::test]
@@ -96,7 +99,10 @@ async fn list_users_returns_at_least_admin() {
     let svc = IdentityService::new(db.pool_owned(), JWT_SECRET, JWT_TTL);
 
     let users = svc
-        .list_users(&admin_ctx(), &cuba_identity::application::QueryUsers::default())
+        .list_users(
+            &admin_ctx(),
+            &cuba_identity::application::QueryUsers::default(),
+        )
         .await
         .expect("list users");
 

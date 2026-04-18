@@ -19,6 +19,7 @@ pub async fn spawn_server(pool: PgPool) -> (String, tokio::task::JoinHandle<()>)
         http_host: "127.0.0.1".into(),
         http_port: 0,
         database_url: "postgres://test".into(),
+        database_read_url: None,
         database_max_connections: 5,
         jwt_secret: "test-secret-min-32-chars-XXXXXXXXXX".into(),
         jwt_ttl_seconds: 3600,
@@ -27,7 +28,9 @@ pub async fn spawn_server(pool: PgPool) -> (String, tokio::task::JoinHandle<()>)
     let state = AppState::new(pool, cfg);
     let app = cuba_api::build_router(state);
 
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind ephemeral");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind ephemeral");
     let addr: SocketAddr = listener.local_addr().expect("local addr");
     let base = format!("http://{addr}");
 

@@ -23,8 +23,7 @@ use cuba_inbound::{
     CreateInboundCommand, InboundHeadView, InboundService, QueryInbounds, SubmitInboundResult,
 };
 use cuba_outbound::{
-    CreateOutboundCommand, OutboundHeadView, OutboundService, QueryOutbounds,
-    SubmitOutboundResult,
+    CreateOutboundCommand, OutboundHeadView, OutboundService, QueryOutbounds, SubmitOutboundResult,
 };
 use cuba_shared::{audit::AuditContext, error::AppError};
 
@@ -50,7 +49,11 @@ async fn list_inbounds(
     Query(q): Query<QueryInbounds>,
 ) -> Result<AppJson<Vec<InboundHeadView>>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db_read().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(
+        InboundService::new(state.db_read().clone())
+            .list(&ctx, &q)
+            .await?,
+    ))
 }
 
 async fn get_inbound(
@@ -59,7 +62,11 @@ async fn get_inbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<InboundHeadView>, AppError> {
     ctx.require_permission("inbound.view")?;
-    Ok(AppJson(InboundService::new(state.db_read().clone()).get(&ctx, id).await?))
+    Ok(AppJson(
+        InboundService::new(state.db_read().clone())
+            .get(&ctx, id)
+            .await?,
+    ))
 }
 
 async fn create_inbound(
@@ -69,7 +76,9 @@ async fn create_inbound(
 ) -> Result<AppJson<InboundHeadView>, AppError> {
     ctx.require_permission("inbound.create")?;
     Ok(AppJson(
-        InboundService::new(state.db().clone()).create(&ctx, cmd).await?,
+        InboundService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 
@@ -80,7 +89,9 @@ async fn submit_inbound(
 ) -> Result<AppJson<SubmitInboundResult>, AppError> {
     ctx.require_permission("inbound.submit")?;
     Ok(AppJson(
-        InboundService::new(state.db().clone()).submit(&ctx, id).await?,
+        InboundService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 
@@ -90,7 +101,9 @@ async fn void_inbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("inbound.void")?;
-    InboundService::new(state.db().clone()).void(&ctx, id).await?;
+    InboundService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }
 
@@ -102,7 +115,11 @@ async fn list_outbounds(
     Query(q): Query<QueryOutbounds>,
 ) -> Result<AppJson<Vec<OutboundHeadView>>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db_read().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(
+        OutboundService::new(state.db_read().clone())
+            .list(&ctx, &q)
+            .await?,
+    ))
 }
 
 async fn get_outbound(
@@ -111,7 +128,11 @@ async fn get_outbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<OutboundHeadView>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db_read().clone()).get(&ctx, id).await?))
+    Ok(AppJson(
+        OutboundService::new(state.db_read().clone())
+            .get(&ctx, id)
+            .await?,
+    ))
 }
 
 async fn create_outbound(
@@ -121,7 +142,9 @@ async fn create_outbound(
 ) -> Result<AppJson<OutboundHeadView>, AppError> {
     ctx.require_permission("outbound.create")?;
     Ok(AppJson(
-        OutboundService::new(state.db().clone()).create(&ctx, cmd).await?,
+        OutboundService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 
@@ -132,7 +155,9 @@ async fn submit_outbound(
 ) -> Result<AppJson<SubmitOutboundResult>, AppError> {
     ctx.require_permission("outbound.submit")?;
     Ok(AppJson(
-        OutboundService::new(state.db().clone()).submit(&ctx, id).await?,
+        OutboundService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 
@@ -142,6 +167,8 @@ async fn void_outbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("outbound.void")?;
-    OutboundService::new(state.db().clone()).void(&ctx, id).await?;
+    OutboundService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }

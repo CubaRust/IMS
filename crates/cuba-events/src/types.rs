@@ -125,9 +125,8 @@ impl DomainEvent {
             }
             Self::OutboundSubmitted { outbound_id, .. }
             | Self::OutboundVoided { outbound_id, .. } => Some(*outbound_id),
-            Self::PreissueCreated { preissue_id, .. } | Self::PreissueClosed { preissue_id, .. } => {
-                Some(*preissue_id)
-            }
+            Self::PreissueCreated { preissue_id, .. }
+            | Self::PreissueClosed { preissue_id, .. } => Some(*preissue_id),
         }
     }
 }

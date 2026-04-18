@@ -5,6 +5,7 @@
 //! 文档渲染而做的镜像类型,避免给业务 crate 引入 utoipa 依赖。
 
 use axum::Router;
+use cuba_bootstrap::AppState;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -115,7 +116,7 @@ fn _doc_inbound_get() {}
     tag = "inbound",
     params(("id" = i64, Path, description = "入库单 id")),
     responses(
-        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<VoidData>),
         (status = 200, description = "状态非法(code=30103)", body = ApiErrorEnvelope),
     ),
     security(("bearer" = []))
@@ -190,7 +191,7 @@ fn _doc_preissue_create() {}
     tag = "preissue",
     params(("id" = i64, Path, description = "preissue id")),
     responses(
-        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<VoidData>),
     ),
     security(("bearer" = []))
 )]
@@ -218,7 +219,7 @@ fn _doc_me() {}
     path = "/api/v1/auth/logout",
     tag = "auth",
     responses(
-        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<VoidData>),
     ),
     security(("bearer" = []))
 )]
@@ -277,7 +278,7 @@ fn _doc_refresh() {}
         InboundHeadView, InboundLineView,
         OutboundCreateBody, OutboundCreateLine, OutboundHeadView,
         PreissueCreateBody, PreissueCreateLine, PreissueCreateResult,
-        ApiErrorEnvelope,
+        ApiErrorEnvelope, VoidData,
     )),
     modifiers(&SecurityAddon),
     tags(
@@ -310,7 +311,12 @@ impl utoipa::Modify for SecurityAddon {
         let comp = openapi.components.as_mut().unwrap();
         comp.add_security_scheme(
             "bearer",
-            SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).bearer_format("JWT").build()),
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .bearer_format("JWT")
+                    .build(),
+            ),
         );
     }
 }
@@ -319,8 +325,7 @@ impl utoipa::Modify for SecurityAddon {
 ///
 /// 访问:`GET /docs`
 /// OpenAPI JSON:`GET /api-docs/openapi.json`
-#[must_use]
-pub fn swagger_router() -> Router {
+pub fn swagger_router() -> Router<AppState> {
     SwaggerUi::new("/docs")
         .url("/api-docs/openapi.json", ApiDoc::openapi())
         .into()

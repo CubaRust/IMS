@@ -18,7 +18,7 @@ async fn dormant_refresh_handles_non_matview() {
     let db = TestDb::new().await;
     let r = dormant_refresh(db.pool_owned()).await.unwrap();
     // 目前是普通视图,返回 refreshed=false
-    assert_eq!(r["refreshed"].as_bool().unwrap(), false);
+    assert!(!r["refreshed"].as_bool().unwrap());
 }
 
 #[tokio::test]

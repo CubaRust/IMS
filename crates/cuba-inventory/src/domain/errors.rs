@@ -58,9 +58,6 @@ impl InventoryError {
 
     #[must_use]
     pub fn transfer_mismatch() -> AppError {
-        AppError::business(
-            INV_TRANSFER_MISMATCH,
-            "TRANSFER 的两端必须是同一物料/批次",
-        )
+        AppError::business(INV_TRANSFER_MISMATCH, "TRANSFER 的两端必须是同一物料/批次")
     }
 }

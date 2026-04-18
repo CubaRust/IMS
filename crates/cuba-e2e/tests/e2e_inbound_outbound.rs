@@ -3,9 +3,7 @@
 use rust_decimal::Decimal;
 
 use cuba_inbound::{CreateInboundCommand, CreateInboundLine, InboundService};
-use cuba_inventory::InventoryService;
 use cuba_outbound::{CreateOutboundCommand, CreateOutboundLine, OutboundService};
-use cuba_shared::types::StockStatus;
 use cuba_testkit::{
     fixtures::{admin_ctx, dec, default_raw_wh_loc, seed_material, today},
     TestDb,

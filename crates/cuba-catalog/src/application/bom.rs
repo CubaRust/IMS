@@ -81,6 +81,44 @@ pub struct QueryBoms {
     pub is_active: Option<bool>,
 }
 
+/// BOM 展开推荐发料行
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BomRecommendLine {
+    pub line_no: i32,
+    pub material_id: i64,
+    pub material_code: Option<String>,
+    pub usage_qty: Decimal,
+    pub loss_rate: Decimal,
+    pub recommend_qty: Decimal,
+    pub public_material_flag: bool,
+    pub remark: Option<String>,
+}
+
+/// BOM 展开推荐结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BomRecommendResult {
+    pub bom_id: i64,
+    pub bom_code: String,
+    pub bom_version: String,
+    pub product_material_id: i64,
+    pub product_material_code: Option<String>,
+    pub route_id: Option<i64>,
+    pub production_qty: Decimal,
+    pub lines: Vec<BomRecommendLine>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct QueryBomRecommend {
+    pub product_material_id: i64,
+    #[serde(default = "default_one")]
+    pub production_qty: Decimal,
+    pub bom_id: Option<i64>,
+}
+
+fn default_one() -> Decimal {
+    Decimal::ONE
+}
+
 // -- Service -----------------------------------------------------------------
 
 #[derive(Clone)]
@@ -91,7 +129,9 @@ pub struct BomService {
 impl BomService {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { repo: Arc::new(PgBomRepository::new(pool)) }
+        Self {
+            repo: Arc::new(PgBomRepository::new(pool)),
+        }
     }
 
     pub async fn create(
@@ -99,12 +139,14 @@ impl BomService {
         _ctx: &AuditContext,
         cmd: CreateBomCommand,
     ) -> Result<BomHeadView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if cmd.lines.is_empty() {
             return Err(CatalogError::bom_empty());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
         }
         self.repo.create(&cmd).await
     }
@@ -115,5 +157,63 @@ impl BomService {
 
     pub async fn list(&self, q: &QueryBoms) -> Result<Vec<BomHeadView>, AppError> {
         self.repo.list(q).await
+    }
+
+    /// BOM 展开推荐发料:根据产品物料 + 生产数量,展开 BOM 行并计算推荐领料数量
+    ///
+    /// recommend_qty = usage_qty × production_qty × (1 + loss_rate)
+    pub async fn recommend(&self, q: &QueryBomRecommend) -> Result<BomRecommendResult, AppError> {
+        if q.production_qty <= Decimal::ZERO {
+            return Err(AppError::validation("生产数量必须 > 0"));
+        }
+
+        let head = if let Some(bom_id) = q.bom_id {
+            self.repo.get(bom_id).await?
+        } else {
+            // 查找该产品的激活 BOM(取最新一个)
+            let boms = self
+                .repo
+                .list(&QueryBoms {
+                    product_material_id: Some(q.product_material_id),
+                    is_active: Some(true),
+                    ..Default::default()
+                })
+                .await?;
+            let bom_head = boms.into_iter().next().ok_or_else(|| {
+                AppError::not_found(format!("物料 id={} 没有激活的 BOM", q.product_material_id))
+            })?;
+            // list 不带行明细,需要再查一次
+            self.repo.get(bom_head.id).await?
+        };
+
+        let lines = head
+            .lines
+            .iter()
+            .map(|l| {
+                let factor = Decimal::ONE + l.loss_rate;
+                let recommend_qty = l.usage_qty * q.production_qty * factor;
+                BomRecommendLine {
+                    line_no: l.line_no,
+                    material_id: l.material_id,
+                    material_code: l.material_code.clone(),
+                    usage_qty: l.usage_qty,
+                    loss_rate: l.loss_rate,
+                    recommend_qty,
+                    public_material_flag: l.public_material_flag,
+                    remark: l.remark.clone(),
+                }
+            })
+            .collect();
+
+        Ok(BomRecommendResult {
+            bom_id: head.id,
+            bom_code: head.bom_code,
+            bom_version: head.bom_version,
+            product_material_id: head.product_material_id,
+            product_material_code: head.product_material_code,
+            route_id: head.route_id,
+            production_qty: q.production_qty,
+            lines,
+        })
     }
 }

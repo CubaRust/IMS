@@ -127,10 +127,7 @@ pub struct CommitTxnResult {
 
 impl CommitTxnCommand {
     /// 把 command 转成 domain 层的 TxnHead + TxnLine[]
-    pub(crate) fn into_domain(
-        self,
-        operator_id: Option<i64>,
-    ) -> (TxnHead, Vec<TxnLine>) {
+    pub(crate) fn into_domain(self, operator_id: Option<i64>) -> (TxnHead, Vec<TxnLine>) {
         let head = TxnHead {
             txn_type: self.txn_type,
             scene_code: self.scene_code,

@@ -9,8 +9,8 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
 use crate::service::{
-    CreateCustomerReturnCommand, CustomerReturnHeadView, CustomerReturnLineView,
-    JudgeLineCommand, QueryCustomerReturns,
+    CreateCustomerReturnCommand, CustomerReturnHeadView, CustomerReturnLineView, JudgeLineCommand,
+    QueryCustomerReturns,
 };
 
 pub struct ReturnLocations {
@@ -30,15 +30,14 @@ pub trait CustomerReturnRepository: Send + Sync {
         cmd: &CreateCustomerReturnCommand,
     ) -> Result<CustomerReturnHeadView, AppError>;
     async fn get(&self, id: i64) -> Result<CustomerReturnHeadView, AppError>;
-    async fn list(
-        &self,
-        q: &QueryCustomerReturns,
-    ) -> Result<Vec<CustomerReturnHeadView>, AppError>;
+    async fn list(&self, q: &QueryCustomerReturns)
+        -> Result<Vec<CustomerReturnHeadView>, AppError>;
     async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
     async fn update_judges(
         &self,
         id: i64,
         judges: &[JudgeLineCommand],
+        ctx: &AuditContext,
     ) -> Result<(), AppError>;
     async fn get_locations(&self, id: i64) -> Result<ReturnLocations, AppError>;
 }
@@ -64,7 +63,8 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
         let mut tx = self.pool.begin().await?;
 
         let return_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('CUSTOMER_RETURN')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let extra = serde_json::json!({
             "return_wh_id": cmd.return_wh_id,
@@ -91,7 +91,8 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
         .bind(ctx.user_id)
         .bind(&extra)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         for l in &cmd.lines {
             sqlx::query(
@@ -112,7 +113,8 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
             .bind(&l.judge_method)
             .bind(&l.judge_note)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         tx.commit().await?;
@@ -131,7 +133,8 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool).await?
+        .fetch_optional(&self.pool)
+        .await?
         .ok_or_else(|| AppError::not_found(format!("客户退货单 id={id} 不存在")))?;
 
         let lines = sqlx::query(
@@ -145,8 +148,12 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
              order by d.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_line).collect();
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_line)
+        .collect();
 
         Ok(row_to_head(head, lines))
     }
@@ -165,11 +172,21 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &q.return_no { qb.push(" and h.return_no = ").push_bind(no.clone()); }
-        if let Some(c) = q.customer_id { qb.push(" and h.customer_id = ").push_bind(c); }
-        if let Some(s) = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(f) = q.date_from { qb.push(" and h.return_date >= ").push_bind(f); }
-        if let Some(t) = q.date_to { qb.push(" and h.return_date <= ").push_bind(t); }
+        if let Some(no) = &q.return_no {
+            qb.push(" and h.return_no = ").push_bind(no.clone());
+        }
+        if let Some(c) = q.customer_id {
+            qb.push(" and h.customer_id = ").push_bind(c);
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(f) = q.date_from {
+            qb.push(" and h.return_date >= ").push_bind(f);
+        }
+        if let Some(t) = q.date_to {
+            qb.push(" and h.return_date <= ").push_bind(t);
+        }
         qb.push(" order by h.return_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
@@ -179,7 +196,8 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
         sqlx::query("update wms.wms_customer_return_h set doc_status = $1 where id = $2")
             .bind(status.as_str())
             .bind(id)
-            .execute(&self.pool).await?;
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -187,7 +205,11 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
         &self,
         id: i64,
         judges: &[JudgeLineCommand],
+        ctx: &AuditContext,
     ) -> Result<(), AppError> {
+        use crate::service::judge_method_to_result;
+        use rust_decimal::Decimal;
+
         let mut tx = self.pool.begin().await?;
         for j in judges {
             sqlx::query(
@@ -199,23 +221,55 @@ impl CustomerReturnRepository for PgCustomerReturnRepository {
             .bind(&j.judge_note)
             .bind(j.line_id)
             .bind(id)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
+
+            // Fetch qty from the line to use as judge_qty
+            let judge_qty: Decimal = sqlx::query_scalar(
+                "select qty from wms.wms_customer_return_d where id = $1 and return_id = $2",
+            )
+            .bind(j.line_id)
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            let judge_result = judge_method_to_result(&j.judge_method);
+            let judge_reason = j.judge_note.clone().unwrap_or_default();
+
+            sqlx::query(
+                r#"insert into wms.wms_customer_return_judge
+                    (customer_return_id, customer_return_line_id, judge_result,
+                     judge_qty, judge_reason, judge_user_id, judge_time)
+                   values ($1, $2, $3, $4, $5, $6, now())"#,
+            )
+            .bind(id)
+            .bind(j.line_id)
+            .bind(judge_result)
+            .bind(judge_qty)
+            .bind(&judge_reason)
+            .bind(ctx.user_id)
+            .execute(&mut *tx)
+            .await?;
         }
         tx.commit().await?;
         Ok(())
     }
 
     async fn get_locations(&self, id: i64) -> Result<ReturnLocations, AppError> {
-        let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_customer_return_h where id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool).await?
-        .ok_or_else(|| AppError::not_found(format!("客户退货单 id={id} 不存在")))?;
+        let extra: serde_json::Value =
+            sqlx::query_scalar("select extra_json from wms.wms_customer_return_h where id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::not_found(format!("客户退货单 id={id} 不存在")))?;
 
-        let return_wh = extra.get("return_wh_id").and_then(|v| v.as_i64())
+        let return_wh = extra
+            .get("return_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("return_wh_id 缺失"))?;
-        let return_loc = extra.get("return_loc_id").and_then(|v| v.as_i64())
+        let return_loc = extra
+            .get("return_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("return_loc_id 缺失"))?;
         Ok(ReturnLocations {
             return_wh,

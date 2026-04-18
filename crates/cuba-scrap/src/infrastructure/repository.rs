@@ -9,9 +9,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
-use crate::application::{
-    CreateScrapCommand, QueryScraps, ScrapHeadView, ScrapLineView,
-};
+use crate::application::{CreateScrapCommand, QueryScraps, ScrapHeadView, ScrapLineView};
 
 #[async_trait]
 pub trait ScrapRepository: Send + Sync {
@@ -48,7 +46,8 @@ impl ScrapRepository for PgScrapRepository {
     ) -> Result<ScrapHeadView, AppError> {
         let mut tx = self.pool.begin().await?;
         let scrap_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('SCRAP')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let id: i64 = sqlx::query_scalar(
             r#"
@@ -66,7 +65,8 @@ impl ScrapRepository for PgScrapRepository {
         .bind(cmd.scrap_date)
         .bind(ctx.user_id)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         // 把 4 个仓位放在 extra_json(需 0014 migration 给 scrap_h 加 extra_json)
         let extra = serde_json::json!({
@@ -82,7 +82,8 @@ impl ScrapRepository for PgScrapRepository {
         )
         .bind(&extra)
         .bind(id)
-        .execute(&mut *tx).await?;
+        .execute(&mut *tx)
+        .await?;
 
         for l in &cmd.lines {
             sqlx::query(
@@ -102,7 +103,8 @@ impl ScrapRepository for PgScrapRepository {
             .bind(&l.stock_status)
             .bind(&l.scrap_reason)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         tx.commit().await?;
@@ -155,11 +157,21 @@ impl ScrapRepository for PgScrapRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &q.scrap_no { qb.push(" and h.scrap_no = ").push_bind(no.clone()); }
-        if let Some(s) = &q.scrap_source { qb.push(" and h.scrap_source = ").push_bind(s.clone()); }
-        if let Some(s) = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(from) = q.date_from { qb.push(" and h.scrap_date >= ").push_bind(from); }
-        if let Some(to) = q.date_to { qb.push(" and h.scrap_date <= ").push_bind(to); }
+        if let Some(no) = &q.scrap_no {
+            qb.push(" and h.scrap_no = ").push_bind(no.clone());
+        }
+        if let Some(s) = &q.scrap_source {
+            qb.push(" and h.scrap_source = ").push_bind(s.clone());
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(from) = q.date_from {
+            qb.push(" and h.scrap_date >= ").push_bind(from);
+        }
+        if let Some(to) = q.date_to {
+            qb.push(" and h.scrap_date <= ").push_bind(to);
+        }
         qb.push(" order by h.scrap_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
@@ -175,21 +187,28 @@ impl ScrapRepository for PgScrapRepository {
     }
 
     async fn get_locations(&self, id: i64) -> Result<(i64, i64, i64, i64), AppError> {
-        let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_scrap_h where id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::not_found(format!("报废单 id={id} 不存在")))?;
+        let extra: serde_json::Value =
+            sqlx::query_scalar("select extra_json from wms.wms_scrap_h where id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::not_found(format!("报废单 id={id} 不存在")))?;
 
-        let src_wh = extra.get("source_wh_id").and_then(|v| v.as_i64())
+        let src_wh = extra
+            .get("source_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_wh_id 缺失"))?;
-        let src_loc = extra.get("source_loc_id").and_then(|v| v.as_i64())
+        let src_loc = extra
+            .get("source_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_loc_id 缺失"))?;
-        let sc_wh = extra.get("scrap_wh_id").and_then(|v| v.as_i64())
+        let sc_wh = extra
+            .get("scrap_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("scrap_wh_id 缺失"))?;
-        let sc_loc = extra.get("scrap_loc_id").and_then(|v| v.as_i64())
+        let sc_loc = extra
+            .get("scrap_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("scrap_loc_id 缺失"))?;
         Ok((src_wh, src_loc, sc_wh, sc_loc))
     }

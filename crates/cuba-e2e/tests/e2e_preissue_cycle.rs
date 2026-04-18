@@ -145,20 +145,18 @@ async fn preissue_closed_by_matching_inbound() {
     inb.submit(&ctx, ih.id).await.expect("submit inbound");
 
     // 3. 验 preissue line_status = CLOSED, head = CLOSED
-    let line_status: String = sqlx::query_scalar(
-        "select line_status from wms.wms_preissue_d where id = $1",
-    )
-    .bind(pre_line_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    let head_status: String = sqlx::query_scalar(
-        "select exception_status from wms.wms_preissue_h where id = $1",
-    )
-    .bind(pres.preissue_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let line_status: String =
+        sqlx::query_scalar("select line_status from wms.wms_preissue_d where id = $1")
+            .bind(pre_line_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let head_status: String =
+        sqlx::query_scalar("select exception_status from wms.wms_preissue_h where id = $1")
+            .bind(pres.preissue_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
 
     assert_eq!(line_status, "CLOSED");
     assert_eq!(head_status, "CLOSED");

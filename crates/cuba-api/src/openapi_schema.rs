@@ -212,3 +212,7 @@ pub struct PageResponse<T> {
     pub page: i64,
     pub page_size: i64,
 }
+
+/// 空数据占位(utoipa 5 不支持 `()` 作为 schema)
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VoidData {}

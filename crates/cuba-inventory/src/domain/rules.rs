@@ -21,7 +21,7 @@
 //! - `SCRAPPED`         : scrap(不计入 book)
 //! - `PREISSUE_PENDING` : pending(不计入 book / available,且 book 可为负)
 //! - `TO_CHECK / FROZEN / IN_PROCESS / OUTSOURCE / CUSTOMER_RETURN_PENDING / RECOVERY` :
-//!                        book,不计入 available
+//!   book,不计入 available
 //!
 //! 这个映射决定了"可用库存"的口径:只有 QUALIFIED 算 available。
 
@@ -35,7 +35,7 @@ use cuba_shared::{
 };
 
 use super::{
-    errors::{self, InventoryError},
+    errors::InventoryError,
     model::{StockDelta, StockLocator, TxnHead, TxnLine},
 };
 
@@ -58,7 +58,9 @@ pub fn validate_txn(head: &TxnHead, lines: &[TxnLine]) -> Result<(), AppError> {
                 return Err(InventoryError::invalid_txn("IN 必须指定 target"));
             }
             if lines.iter().any(|l| l.io_flag != IoFlag::In) {
-                return Err(InventoryError::invalid_txn("IN 事务的行必须全为 io_flag=IN"));
+                return Err(InventoryError::invalid_txn(
+                    "IN 事务的行必须全为 io_flag=IN",
+                ));
             }
         }
         TxnType::Out | TxnType::Reserve | TxnType::Release => {
@@ -81,10 +83,12 @@ pub fn validate_txn(head: &TxnHead, lines: &[TxnLine]) -> Result<(), AppError> {
         }
         TxnType::Transfer => {
             if head.source.is_none() || head.target.is_none() {
-                return Err(InventoryError::invalid_txn("TRANSFER 必须同时指定 source + target"));
+                return Err(InventoryError::invalid_txn(
+                    "TRANSFER 必须同时指定 source + target",
+                ));
             }
             // TRANSFER 行数必须是偶数,成对出现
-            if lines.len() % 2 != 0 {
+            if !lines.len().is_multiple_of(2) {
                 return Err(InventoryError::invalid_txn("TRANSFER 行数必须成对"));
             }
             // 简化规则:奇数行 OUT、偶数行 IN,相邻两行物料/批次一致
@@ -101,13 +105,17 @@ pub fn validate_txn(head: &TxnHead, lines: &[TxnLine]) -> Result<(), AppError> {
         TxnType::Convert => {
             // CONVERT 是换料/换批,source 和 target 至少一个必须在(可以同仓位换料)
             if head.source.is_none() && head.target.is_none() {
-                return Err(InventoryError::invalid_txn("CONVERT 至少指定 source 或 target"));
+                return Err(InventoryError::invalid_txn(
+                    "CONVERT 至少指定 source 或 target",
+                ));
             }
             // 行级至少有一条 OUT + 一条 IN
             let has_out = lines.iter().any(|l| l.io_flag == IoFlag::Out);
             let has_in = lines.iter().any(|l| l.io_flag == IoFlag::In);
             if !has_out || !has_in {
-                return Err(InventoryError::invalid_txn("CONVERT 必须同时包含 OUT 与 IN 行"));
+                return Err(InventoryError::invalid_txn(
+                    "CONVERT 必须同时包含 OUT 与 IN 行",
+                ));
             }
         }
     }
@@ -142,10 +150,17 @@ pub fn compute_deltas(head: &TxnHead, lines: &[TxnLine]) -> Result<Vec<StockDelt
                 .ok_or_else(|| InventoryError::invalid_txn("OUT 行找不到仓位"))?,
         };
 
-        let locator =
-            StockLocator::new(line.material_id, side.wh_id, side.loc_id, &line.batch_no, status);
+        let locator = StockLocator::new(
+            line.material_id,
+            side.wh_id,
+            side.loc_id,
+            &line.batch_no,
+            status,
+        );
 
-        let delta = map.entry(locator.clone()).or_insert_with(|| StockDelta::zero(locator));
+        let delta = map
+            .entry(locator.clone())
+            .or_insert_with(|| StockDelta::zero(locator));
 
         apply_line_to_delta(head, line, delta, status);
     }
@@ -154,7 +169,12 @@ pub fn compute_deltas(head: &TxnHead, lines: &[TxnLine]) -> Result<Vec<StockDelt
 }
 
 /// 把单行应用到 delta 上
-fn apply_line_to_delta(head: &TxnHead, line: &TxnLine, delta: &mut StockDelta, status: StockStatus) {
+fn apply_line_to_delta(
+    head: &TxnHead,
+    line: &TxnLine,
+    delta: &mut StockDelta,
+    status: StockStatus,
+) {
     let signed = match line.io_flag {
         IoFlag::In => line.qty,
         IoFlag::Out => -line.qty,
@@ -227,7 +247,7 @@ mod tests {
     use rust_decimal::Decimal;
 
     use super::*;
-    use crate::domain::model::TxnSide;
+    use crate::domain::{errors, model::TxnSide};
 
     fn head(txn_type: TxnType, source: Option<TxnSide>, target: Option<TxnSide>) -> TxnHead {
         TxnHead {
@@ -252,7 +272,11 @@ mod tests {
     }
 
     fn side(wh_id: i64, loc_id: i64, status: Option<StockStatus>) -> TxnSide {
-        TxnSide { wh_id, loc_id, status }
+        TxnSide {
+            wh_id,
+            loc_id,
+            status,
+        }
     }
 
     fn line(line_no: i32, io: IoFlag, qty: i64) -> TxnLine {
@@ -277,7 +301,11 @@ mod tests {
 
     #[test]
     fn in_txn_produces_positive_delta() {
-        let h = head(TxnType::In, None, Some(side(1, 1, Some(StockStatus::Qualified))));
+        let h = head(
+            TxnType::In,
+            None,
+            Some(side(1, 1, Some(StockStatus::Qualified))),
+        );
         let lines = vec![line(1, IoFlag::In, 10)];
         let deltas = compute_deltas(&h, &lines).unwrap();
         assert_eq!(deltas.len(), 1);
@@ -287,7 +315,11 @@ mod tests {
 
     #[test]
     fn out_txn_produces_negative_delta() {
-        let h = head(TxnType::Out, Some(side(1, 1, Some(StockStatus::Qualified))), None);
+        let h = head(
+            TxnType::Out,
+            Some(side(1, 1, Some(StockStatus::Qualified))),
+            None,
+        );
         let lines = vec![line(1, IoFlag::Out, 3)];
         let deltas = compute_deltas(&h, &lines).unwrap();
         assert_eq!(deltas[0].book, Decimal::from(-3));
@@ -313,7 +345,11 @@ mod tests {
 
     #[test]
     fn reserve_only_moves_available_to_occupied() {
-        let h = head(TxnType::Reserve, Some(side(1, 1, Some(StockStatus::Qualified))), None);
+        let h = head(
+            TxnType::Reserve,
+            Some(side(1, 1, Some(StockStatus::Qualified))),
+            None,
+        );
         let lines = vec![line(1, IoFlag::Out, 4)];
         let deltas = compute_deltas(&h, &lines).unwrap();
         // book 不动,available -4,occupied +4
@@ -337,7 +373,11 @@ mod tests {
 
     #[test]
     fn validate_rejects_empty_lines() {
-        let h = head(TxnType::In, None, Some(side(1, 1, Some(StockStatus::Qualified))));
+        let h = head(
+            TxnType::In,
+            None,
+            Some(side(1, 1, Some(StockStatus::Qualified))),
+        );
         let err = validate_txn(&h, &[]).unwrap_err();
         assert_eq!(err.code(), errors::INV_INVALID_TXN);
     }

@@ -16,7 +16,7 @@ pub mod domain;
 pub mod infrastructure;
 
 pub use application::{
-    CreateScrapCommand, CreateScrapLine, QueryScraps, ScrapHeadView, ScrapLineView,
-    ScrapService, SubmitScrapResult,
+    CreateScrapCommand, CreateScrapLine, QueryScraps, ScrapHeadView, ScrapLineView, ScrapService,
+    SubmitScrapResult,
 };
 pub use infrastructure::repository::{PgScrapRepository, ScrapRepository};

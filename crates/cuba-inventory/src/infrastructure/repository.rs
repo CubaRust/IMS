@@ -59,7 +59,11 @@ pub trait InventoryRepository: Send + Sync {
     ) -> Result<PageResponse<TxnHeadView>, AppError>;
 
     /// 查询事务行
-    async fn query_txn_lines(&self, tenant_id: i64, txn_id: i64) -> Result<Vec<TxnLineView>, AppError>;
+    async fn query_txn_lines(
+        &self,
+        tenant_id: i64,
+        txn_id: i64,
+    ) -> Result<Vec<TxnLineView>, AppError>;
 }
 
 /// PG 实现
@@ -143,7 +147,9 @@ impl InventoryRepository for PgInventoryRepository {
     ) -> Result<PageResponse<BalanceView>, AppError> {
         let p = page.normalize();
 
-        let total = count_balance(&self.pool, tenant_id, query).await.unwrap_or(0);
+        let total = count_balance(&self.pool, tenant_id, query)
+            .await
+            .unwrap_or(0);
 
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
@@ -205,7 +211,11 @@ impl InventoryRepository for PgInventoryRepository {
         Ok(PageResponse::new(p, total, items))
     }
 
-    async fn query_txn_lines(&self, tenant_id: i64, txn_id: i64) -> Result<Vec<TxnLineView>, AppError> {
+    async fn query_txn_lines(
+        &self,
+        tenant_id: i64,
+        txn_id: i64,
+    ) -> Result<Vec<TxnLineView>, AppError> {
         let rows = sqlx::query(
             r#"
             select d.id, d.txn_id, d.line_no, d.material_id, m.material_code,
@@ -236,14 +246,12 @@ async fn insert_txn_head(
     head: &TxnHead,
     ctx: &AuditContext,
 ) -> Result<i64, AppError> {
-    let (src_wh, src_loc, src_status) = head
-        .source
-        .as_ref()
-        .map_or((None, None, None), |s| (Some(s.wh_id), Some(s.loc_id), s.status));
-    let (tgt_wh, tgt_loc, tgt_status) = head
-        .target
-        .as_ref()
-        .map_or((None, None, None), |s| (Some(s.wh_id), Some(s.loc_id), s.status));
+    let (src_wh, src_loc, src_status) = head.source.as_ref().map_or((None, None, None), |s| {
+        (Some(s.wh_id), Some(s.loc_id), s.status)
+    });
+    let (tgt_wh, tgt_loc, tgt_status) = head.target.as_ref().map_or((None, None, None), |s| {
+        (Some(s.wh_id), Some(s.loc_id), s.status)
+    });
 
     let id: i64 = sqlx::query_scalar(
         r#"
@@ -428,11 +436,7 @@ fn push_balance_filters<'a>(qb: &mut sqlx::QueryBuilder<'a, Postgres>, query: &'
     }
 }
 
-async fn count_txns(
-    pool: &PgPool,
-    tenant_id: i64,
-    query: &QueryTxns,
-) -> Result<i64, AppError> {
+async fn count_txns(pool: &PgPool, tenant_id: i64, query: &QueryTxns) -> Result<i64, AppError> {
     let mut qb = sqlx::QueryBuilder::<Postgres>::new(
         "select count(*) from wms.wms_inventory_txn_h where tenant_id = ",
     );

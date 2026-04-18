@@ -5,9 +5,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 
 use cuba_shared::error::AppError;
 
-use crate::application::route::{
-    CreateRouteCommand, QueryRoutes, RouteHeadView, RouteStepView,
-};
+use crate::application::route::{CreateRouteCommand, QueryRoutes, RouteHeadView, RouteStepView};
 
 #[async_trait]
 pub trait RouteRepository: Send + Sync {

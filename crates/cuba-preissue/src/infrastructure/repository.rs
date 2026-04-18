@@ -68,7 +68,10 @@ impl PreissueRepository for PgPreissueRepository {
             .fetch_one(&mut *tx)
             .await?;
 
-        let exception_type = cmd.exception_type.clone().unwrap_or_else(|| "PREISSUE".into());
+        let exception_type = cmd
+            .exception_type
+            .clone()
+            .unwrap_or_else(|| "PREISSUE".into());
 
         let id: i64 = sqlx::query_scalar(
             r#"
@@ -239,7 +242,9 @@ impl PreissueRepository for PgPreissueRepository {
         let status: String = line.get("line_status");
 
         if status == "CLOSED" {
-            return Err(PreissueError::already_closed(line.get::<String, _>("preissue_no").as_str()));
+            return Err(PreissueError::already_closed(
+                line.get::<String, _>("preissue_no").as_str(),
+            ));
         }
         if filled_now > unfilled {
             return Err(PreissueError::overfill(line_id));
@@ -312,10 +317,17 @@ impl PreissueRepository for PgPreissueRepository {
 
         let preissue_no: String = line.get("preissue_no");
         let material_id: i64 = line.get("material_id");
-        let batch_no: String = line.try_get::<Option<String>, _>("expected_batch_no")?.unwrap_or_default();
+        let batch_no: String = line
+            .try_get::<Option<String>, _>("expected_batch_no")?
+            .unwrap_or_default();
 
         tx.commit().await?;
-        Ok((preissue_no, new_line_status.to_string(), material_id, batch_no))
+        Ok((
+            preissue_no,
+            new_line_status.to_string(),
+            material_id,
+            batch_no,
+        ))
     }
 
     async fn update_head_status(

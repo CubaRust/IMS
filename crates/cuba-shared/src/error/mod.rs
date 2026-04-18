@@ -159,3 +159,22 @@ impl From<&AppError> for ErrorBody {
         }
     }
 }
+
+// `IntoResponse` 放在类型定义 crate 以满足孤儿规则
+impl axum::response::IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+        use axum::Json;
+
+        let status = StatusCode::from_u16(self.http_status()).unwrap_or(StatusCode::OK);
+
+        if self.http_status() >= 500 {
+            tracing::error!(error = %self, "server error");
+        } else {
+            tracing::debug!(error = %self, "business error");
+        }
+
+        let body: ErrorBody = (&self).into();
+        (status, Json(body)).into_response()
+    }
+}

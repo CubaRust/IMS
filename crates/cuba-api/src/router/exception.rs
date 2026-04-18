@@ -22,12 +22,9 @@ use cuba_defect::{
     CreateDefectCommand, DefectHeadView, DefectService, QueryDefects, SubmitDefectResult,
 };
 use cuba_recovery::{
-    CreateRecoveryCommand, QueryRecoveries, RecoveryHeadView, RecoveryService,
-    SubmitRecoveryResult,
+    CreateRecoveryCommand, QueryRecoveries, RecoveryHeadView, RecoveryService, SubmitRecoveryResult,
 };
-use cuba_scrap::{
-    CreateScrapCommand, QueryScraps, ScrapHeadView, ScrapService, SubmitScrapResult,
-};
+use cuba_scrap::{CreateScrapCommand, QueryScraps, ScrapHeadView, ScrapService, SubmitScrapResult};
 use cuba_shared::{audit::AuditContext, error::AppError};
 
 use crate::response::AppJson;
@@ -59,7 +56,11 @@ async fn list_defects(
     Query(q): Query<QueryDefects>,
 ) -> Result<AppJson<Vec<DefectHeadView>>, AppError> {
     ctx.require_permission("defect.view")?;
-    Ok(AppJson(DefectService::new(state.db_read().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(
+        DefectService::new(state.db_read().clone())
+            .list(&ctx, &q)
+            .await?,
+    ))
 }
 
 async fn get_defect(
@@ -68,7 +69,11 @@ async fn get_defect(
     Path(id): Path<i64>,
 ) -> Result<AppJson<DefectHeadView>, AppError> {
     ctx.require_permission("defect.view")?;
-    Ok(AppJson(DefectService::new(state.db_read().clone()).get(&ctx, id).await?))
+    Ok(AppJson(
+        DefectService::new(state.db_read().clone())
+            .get(&ctx, id)
+            .await?,
+    ))
 }
 
 async fn create_defect(
@@ -78,7 +83,9 @@ async fn create_defect(
 ) -> Result<AppJson<DefectHeadView>, AppError> {
     ctx.require_permission("defect.create")?;
     Ok(AppJson(
-        DefectService::new(state.db().clone()).create(&ctx, cmd).await?,
+        DefectService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 
@@ -89,7 +96,9 @@ async fn submit_defect(
 ) -> Result<AppJson<SubmitDefectResult>, AppError> {
     ctx.require_permission("defect.submit")?;
     Ok(AppJson(
-        DefectService::new(state.db().clone()).submit(&ctx, id).await?,
+        DefectService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 
@@ -99,7 +108,9 @@ async fn void_defect(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("defect.void")?;
-    DefectService::new(state.db().clone()).void(&ctx, id).await?;
+    DefectService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }
 
@@ -111,7 +122,9 @@ async fn list_scraps(
     Query(q): Query<QueryScraps>,
 ) -> Result<AppJson<Vec<ScrapHeadView>>, AppError> {
     ctx.require_permission("scrap.view")?;
-    Ok(AppJson(ScrapService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(
+        ScrapService::new(state.db().clone()).list(&q).await?,
+    ))
 }
 
 async fn get_scrap(
@@ -120,7 +133,9 @@ async fn get_scrap(
     Path(id): Path<i64>,
 ) -> Result<AppJson<ScrapHeadView>, AppError> {
     ctx.require_permission("scrap.view")?;
-    Ok(AppJson(ScrapService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(
+        ScrapService::new(state.db().clone()).get(id).await?,
+    ))
 }
 
 async fn create_scrap(
@@ -130,7 +145,9 @@ async fn create_scrap(
 ) -> Result<AppJson<ScrapHeadView>, AppError> {
     ctx.require_permission("scrap.create")?;
     Ok(AppJson(
-        ScrapService::new(state.db().clone()).create(&ctx, cmd).await?,
+        ScrapService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 
@@ -141,7 +158,9 @@ async fn submit_scrap(
 ) -> Result<AppJson<SubmitScrapResult>, AppError> {
     ctx.require_permission("scrap.submit")?;
     Ok(AppJson(
-        ScrapService::new(state.db().clone()).submit(&ctx, id).await?,
+        ScrapService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 
@@ -163,7 +182,11 @@ async fn list_recoveries(
     Query(q): Query<QueryRecoveries>,
 ) -> Result<AppJson<Vec<RecoveryHeadView>>, AppError> {
     ctx.require_permission("recovery.view")?;
-    Ok(AppJson(RecoveryService::new(state.db_read().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(
+        RecoveryService::new(state.db_read().clone())
+            .list(&ctx, &q)
+            .await?,
+    ))
 }
 
 async fn get_recovery(
@@ -172,7 +195,11 @@ async fn get_recovery(
     Path(id): Path<i64>,
 ) -> Result<AppJson<RecoveryHeadView>, AppError> {
     ctx.require_permission("recovery.view")?;
-    Ok(AppJson(RecoveryService::new(state.db_read().clone()).get(&ctx, id).await?))
+    Ok(AppJson(
+        RecoveryService::new(state.db_read().clone())
+            .get(&ctx, id)
+            .await?,
+    ))
 }
 
 async fn create_recovery(
@@ -182,7 +209,9 @@ async fn create_recovery(
 ) -> Result<AppJson<RecoveryHeadView>, AppError> {
     ctx.require_permission("recovery.create")?;
     Ok(AppJson(
-        RecoveryService::new(state.db().clone()).create(&ctx, cmd).await?,
+        RecoveryService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 
@@ -193,7 +222,9 @@ async fn submit_recovery(
 ) -> Result<AppJson<SubmitRecoveryResult>, AppError> {
     ctx.require_permission("recovery.submit")?;
     Ok(AppJson(
-        RecoveryService::new(state.db().clone()).submit(&ctx, id).await?,
+        RecoveryService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 
@@ -203,6 +234,8 @@ async fn void_recovery(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("recovery.void")?;
-    RecoveryService::new(state.db().clone()).void(&ctx, id).await?;
+    RecoveryService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }

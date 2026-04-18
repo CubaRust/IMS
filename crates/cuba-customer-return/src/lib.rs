@@ -10,7 +10,7 @@
 //!    - 对判定为 TO_DEFECT 的行 → IN BAD(到不良仓)
 //!    - 对判定为 TO_SCRAP 的行 → IN SCRAPPED(到报废仓)
 //!    - 对判定为 TO_SUPPLIER_RETURN 的行 → IN BAD(到不良仓,等后续走退供单)
-//!    若某行没判定,默认作 TO_CHECK(待检,在头的 return_wh/loc)
+//!    - 若某行没判定,默认作 TO_CHECK(待检,在头的 return_wh/loc)
 
 #![deny(unsafe_code)]
 

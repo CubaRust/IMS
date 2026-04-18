@@ -52,7 +52,11 @@ async fn cr_list(
     Query(q): Query<QueryCustomerReturns>,
 ) -> Result<AppJson<Vec<CustomerReturnHeadView>>, AppError> {
     ctx.require_permission("customer_return.view")?;
-    Ok(AppJson(CustomerReturnService::new(state.db_read().clone()).list(&q).await?))
+    Ok(AppJson(
+        CustomerReturnService::new(state.db_read().clone())
+            .list(&q)
+            .await?,
+    ))
 }
 async fn cr_get(
     State(state): State<AppState>,
@@ -60,7 +64,11 @@ async fn cr_get(
     Path(id): Path<i64>,
 ) -> Result<AppJson<CustomerReturnHeadView>, AppError> {
     ctx.require_permission("customer_return.view")?;
-    Ok(AppJson(CustomerReturnService::new(state.db_read().clone()).get(id).await?))
+    Ok(AppJson(
+        CustomerReturnService::new(state.db_read().clone())
+            .get(id)
+            .await?,
+    ))
 }
 async fn cr_create(
     State(state): State<AppState>,
@@ -69,7 +77,9 @@ async fn cr_create(
 ) -> Result<AppJson<CustomerReturnHeadView>, AppError> {
     ctx.require_permission("customer_return.create")?;
     Ok(AppJson(
-        CustomerReturnService::new(state.db().clone()).create(&ctx, cmd).await?,
+        CustomerReturnService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 async fn cr_judge(
@@ -91,7 +101,9 @@ async fn cr_submit(
 ) -> Result<AppJson<SubmitCustomerReturnResult>, AppError> {
     ctx.require_permission("customer_return.submit")?;
     Ok(AppJson(
-        CustomerReturnService::new(state.db().clone()).submit(&ctx, id).await?,
+        CustomerReturnService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 async fn cr_void(
@@ -100,7 +112,9 @@ async fn cr_void(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("customer_return.void")?;
-    CustomerReturnService::new(state.db().clone()).void(&ctx, id).await?;
+    CustomerReturnService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }
 
@@ -112,7 +126,11 @@ async fn sr_list(
     Query(q): Query<QuerySupplierReturns>,
 ) -> Result<AppJson<Vec<SupplierReturnHeadView>>, AppError> {
     ctx.require_permission("supplier_return.view")?;
-    Ok(AppJson(SupplierReturnService::new(state.db_read().clone()).list(&q).await?))
+    Ok(AppJson(
+        SupplierReturnService::new(state.db_read().clone())
+            .list(&q)
+            .await?,
+    ))
 }
 async fn sr_get(
     State(state): State<AppState>,
@@ -120,7 +138,11 @@ async fn sr_get(
     Path(id): Path<i64>,
 ) -> Result<AppJson<SupplierReturnHeadView>, AppError> {
     ctx.require_permission("supplier_return.view")?;
-    Ok(AppJson(SupplierReturnService::new(state.db_read().clone()).get(id).await?))
+    Ok(AppJson(
+        SupplierReturnService::new(state.db_read().clone())
+            .get(id)
+            .await?,
+    ))
 }
 async fn sr_create(
     State(state): State<AppState>,
@@ -129,7 +151,9 @@ async fn sr_create(
 ) -> Result<AppJson<SupplierReturnHeadView>, AppError> {
     ctx.require_permission("supplier_return.create")?;
     Ok(AppJson(
-        SupplierReturnService::new(state.db().clone()).create(&ctx, cmd).await?,
+        SupplierReturnService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 async fn sr_submit(
@@ -139,7 +163,9 @@ async fn sr_submit(
 ) -> Result<AppJson<SubmitSupplierReturnResult>, AppError> {
     ctx.require_permission("supplier_return.submit")?;
     Ok(AppJson(
-        SupplierReturnService::new(state.db().clone()).submit(&ctx, id).await?,
+        SupplierReturnService::new(state.db().clone())
+            .submit(&ctx, id)
+            .await?,
     ))
 }
 async fn sr_void(
@@ -148,7 +174,9 @@ async fn sr_void(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("supplier_return.void")?;
-    SupplierReturnService::new(state.db().clone()).void(&ctx, id).await?;
+    SupplierReturnService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }
 
@@ -160,7 +188,9 @@ async fn os_list(
     Query(q): Query<QueryOutsources>,
 ) -> Result<AppJson<Vec<OutsourceHeadView>>, AppError> {
     ctx.require_permission("pmc.outsource.view")?;
-    Ok(AppJson(PmcService::new(state.db_read().clone()).list(&q).await?))
+    Ok(AppJson(
+        PmcService::new(state.db_read().clone()).list(&q).await?,
+    ))
 }
 async fn os_get(
     State(state): State<AppState>,
@@ -168,7 +198,9 @@ async fn os_get(
     Path(id): Path<i64>,
 ) -> Result<AppJson<OutsourceHeadView>, AppError> {
     ctx.require_permission("pmc.outsource.view")?;
-    Ok(AppJson(PmcService::new(state.db_read().clone()).get(id).await?))
+    Ok(AppJson(
+        PmcService::new(state.db_read().clone()).get(id).await?,
+    ))
 }
 async fn os_create(
     State(state): State<AppState>,
@@ -177,7 +209,9 @@ async fn os_create(
 ) -> Result<AppJson<OutsourceHeadView>, AppError> {
     ctx.require_permission("pmc.outsource.create")?;
     Ok(AppJson(
-        PmcService::new(state.db().clone()).create(&ctx, cmd).await?,
+        PmcService::new(state.db().clone())
+            .create(&ctx, cmd)
+            .await?,
     ))
 }
 async fn os_send(
@@ -187,7 +221,9 @@ async fn os_send(
 ) -> Result<AppJson<PmcSubmitResult>, AppError> {
     ctx.require_permission("pmc.outsource.send")?;
     Ok(AppJson(
-        PmcService::new(state.db().clone()).submit_send(&ctx, id).await?,
+        PmcService::new(state.db().clone())
+            .submit_send(&ctx, id)
+            .await?,
     ))
 }
 async fn os_back(
@@ -198,7 +234,9 @@ async fn os_back(
 ) -> Result<AppJson<PmcSubmitResult>, AppError> {
     ctx.require_permission("pmc.outsource.back")?;
     Ok(AppJson(
-        PmcService::new(state.db().clone()).submit_back(&ctx, id, cmd).await?,
+        PmcService::new(state.db().clone())
+            .submit_back(&ctx, id, cmd)
+            .await?,
     ))
 }
 async fn os_void(

@@ -7,9 +7,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
-use crate::application::{
-    CreateInboundCommand, InboundHeadView, InboundLineView, QueryInbounds,
-};
+use crate::application::{CreateInboundCommand, InboundHeadView, InboundLineView, QueryInbounds};
 use crate::domain::default_target_status;
 
 #[async_trait]
@@ -54,10 +52,9 @@ impl InboundRepository for PgInboundRepository {
     ) -> Result<InboundHeadView, AppError> {
         let mut tx = self.pool.begin().await?;
 
-        let inbound_no: String =
-            sqlx::query_scalar("select sys.fn_next_doc_no('INBOUND')")
-                .fetch_one(&mut *tx)
-                .await?;
+        let inbound_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('INBOUND')")
+            .fetch_one(&mut *tx)
+            .await?;
 
         let tenant_id = ctx.tenant_id;
 
@@ -225,7 +222,7 @@ impl InboundRepository for PgInboundRepository {
         .bind(id)
         .bind(tenant_id)
         .execute(&self.pool)
-            .await?;
+        .await?;
         Ok(())
     }
 }

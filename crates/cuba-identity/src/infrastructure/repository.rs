@@ -30,11 +30,7 @@ pub trait IdentityRepository: Send + Sync {
 
     async fn me(&self, user_id: i64) -> Result<UserView, AppError>;
 
-    async fn list_users(
-        &self,
-        tenant_id: i64,
-        q: &QueryUsers,
-    ) -> Result<Vec<UserView>, AppError>;
+    async fn list_users(&self, tenant_id: i64, q: &QueryUsers) -> Result<Vec<UserView>, AppError>;
     async fn list_roles(&self) -> Result<Vec<RoleView>, AppError>;
     async fn list_permissions(&self) -> Result<Vec<PermissionView>, AppError>;
 
@@ -130,13 +126,11 @@ impl IdentityRepository for PgIdentityRepository {
     }
 
     async fn update_password(&self, user_id: i64, new_hash: &str) -> Result<(), AppError> {
-        sqlx::query(
-            "update sys.sys_user set password_hash = $1, updated_at = now() where id = $2",
-        )
-        .bind(new_hash)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("update sys.sys_user set password_hash = $1, updated_at = now() where id = $2")
+            .bind(new_hash)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -157,11 +151,7 @@ impl IdentityRepository for PgIdentityRepository {
         Ok(row_to_user_view(row, roles))
     }
 
-    async fn list_users(
-        &self,
-        tenant_id: i64,
-        q: &QueryUsers,
-    ) -> Result<Vec<UserView>, AppError> {
+    async fn list_users(&self, tenant_id: i64, q: &QueryUsers) -> Result<Vec<UserView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select u.id, u.user_code, u.user_name, u.login_name,
@@ -181,10 +171,12 @@ impl IdentityRepository for PgIdentityRepository {
         qb.push(" where u.tenant_id = ").push_bind(tenant_id);
 
         if let Some(login) = &q.login_name {
-            qb.push(" and u.login_name ilike ").push_bind(format!("%{login}%"));
+            qb.push(" and u.login_name ilike ")
+                .push_bind(format!("%{login}%"));
         }
         if let Some(name) = &q.user_name {
-            qb.push(" and u.user_name ilike ").push_bind(format!("%{name}%"));
+            qb.push(" and u.user_name ilike ")
+                .push_bind(format!("%{name}%"));
         }
         if let Some(active) = q.is_active {
             qb.push(" and u.is_active = ").push_bind(active);
@@ -260,8 +252,7 @@ impl IdentityRepository for PgIdentityRepository {
         // exp 是 unix seconds,转 Timestamp
         let exp_dt = time::OffsetDateTime::from_unix_timestamp(exp)
             .map_err(|e| AppError::validation(format!("exp 不是合法时间戳: {e}")))?;
-        let exp_primitive =
-            time::PrimitiveDateTime::new(exp_dt.date(), exp_dt.time());
+        let exp_primitive = time::PrimitiveDateTime::new(exp_dt.date(), exp_dt.time());
         sqlx::query(
             r#"
             insert into sys.sys_jwt_revocation (jti, user_id, login_name, reason, expires_at)
@@ -301,12 +292,11 @@ impl IdentityRepository for PgIdentityRepository {
     }
 
     async fn is_jwt_revoked(&self, jti: &str) -> Result<bool, AppError> {
-        let cnt: Option<i64> = sqlx::query_scalar(
-            "select 1 from sys.sys_jwt_revocation where jti = $1 limit 1",
-        )
-        .bind(jti)
-        .fetch_optional(&self.pool)
-        .await?;
+        let cnt: Option<i64> =
+            sqlx::query_scalar("select 1 from sys.sys_jwt_revocation where jti = $1 limit 1")
+                .bind(jti)
+                .fetch_optional(&self.pool)
+                .await?;
         Ok(cnt.is_some())
     }
 }

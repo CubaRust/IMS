@@ -168,8 +168,10 @@ async fn stocktake_submit_fails_if_not_all_counted() {
     // 不录数直接 submit,应失败(ST_NOT_COUNTED = 47103)
     let err = st.submit(&ctx, head.id).await.expect_err("未录数应失败");
     let dbg = format!("{err:?}");
-    assert!(dbg.contains("47103") || dbg.contains("NOT_COUNTED") || dbg.contains("未录入"),
-        "expected not-counted error, got: {dbg}");
+    assert!(
+        dbg.contains("47103") || dbg.contains("NOT_COUNTED") || dbg.contains("未录入"),
+        "expected not-counted error, got: {dbg}"
+    );
 }
 
 async fn qty_of(

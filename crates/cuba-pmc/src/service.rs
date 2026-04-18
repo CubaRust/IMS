@@ -143,7 +143,8 @@ impl PmcService {
             return Err(AppError::business(PMC_EMPTY, "委外单送料行不能为空"));
         }
         for l in &cmd.send_lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -152,11 +153,7 @@ impl PmcService {
     }
 
     /// 送料:OUT 从送料源仓位
-    pub async fn submit_send(
-        &self,
-        ctx: &AuditContext,
-        id: i64,
-    ) -> Result<SubmitResult, AppError> {
+    pub async fn submit_send(&self, ctx: &AuditContext, id: i64) -> Result<SubmitResult, AppError> {
         let head = self.repo.get(id).await?;
         if head.send_status == "SENT" {
             return Err(AppError::business(
@@ -316,10 +313,7 @@ impl PmcService {
         self.repo.get(id).await
     }
 
-    pub async fn list(
-        &self,
-        q: &QueryOutsources,
-    ) -> Result<Vec<OutsourceHeadView>, AppError> {
+    pub async fn list(&self, q: &QueryOutsources) -> Result<Vec<OutsourceHeadView>, AppError> {
         self.repo.list(q).await
     }
 }

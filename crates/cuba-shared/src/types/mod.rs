@@ -70,7 +70,7 @@ impl TryFrom<&str> for DocStatus {
 
 /// 库存状态
 ///
-/// 对应 sys.sys_dict `STOCK_STATUS`,与库存余额表、事务头/行里的 `stock_status`
+/// 对应 `sys.sys_dict` `STOCK_STATUS`,与库存余额表、事务头/行里的 `stock_status`
 /// 字段保持一致。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

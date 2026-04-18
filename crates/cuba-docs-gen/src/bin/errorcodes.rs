@@ -51,13 +51,11 @@ fn main() -> anyhow::Result<()> {
 
     // 写 JSON
     let json_path = out_dir.join("error-codes.json");
-    let grouped: BTreeMap<String, Vec<&ErrorEntry>> = entries.iter().fold(
-        BTreeMap::new(),
-        |mut acc, e| {
+    let grouped: BTreeMap<String, Vec<&ErrorEntry>> =
+        entries.iter().fold(BTreeMap::new(), |mut acc, e| {
             acc.entry(e.segment.clone()).or_default().push(e);
             acc
-        },
-    );
+        });
     let json = serde_json::json!({
         "generated_at": current_iso(),
         "total": entries.len(),
@@ -76,7 +74,10 @@ fn main() -> anyhow::Result<()> {
     let md_path = out_dir.join("error-codes.md");
     let mut md = String::new();
     md.push_str("# 错误码表\n\n");
-    md.push_str(&format!("> 自动生成自源码,共 {} 条。手动修改无效。\n\n", entries.len()));
+    md.push_str(&format!(
+        "> 自动生成自源码,共 {} 条。手动修改无效。\n\n",
+        entries.len()
+    ));
     md.push_str("## 约定\n\n");
     md.push_str("- 业务错误 → HTTP 200 + `code != 0`\n");
     md.push_str("- 系统错误 → HTTP 4xx/5xx + `code`\n");
@@ -103,7 +104,11 @@ fn main() -> anyhow::Result<()> {
                 c.code,
                 c.name,
                 c.crate_name,
-                if c.description.is_empty() { "—" } else { &c.description }
+                if c.description.is_empty() {
+                    "—"
+                } else {
+                    &c.description
+                }
             ));
         }
     }
@@ -133,7 +138,9 @@ fn walk_dir(dir: &Path, crate_name: &str, out: &mut Vec<ErrorEntry>) {
 }
 
 fn scan_file(path: &Path, crate_name: &str, out: &mut Vec<ErrorEntry>) {
-    let Ok(text) = fs::read_to_string(path) else { return };
+    let Ok(text) = fs::read_to_string(path) else {
+        return;
+    };
     // 正则在 stdlib 没有,手工解析
     let mut pending_doc: Vec<String> = Vec::new();
     for raw in text.lines() {

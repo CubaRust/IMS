@@ -163,7 +163,8 @@ impl DefectService {
             return Err(DefectError::empty_lines());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -187,13 +188,12 @@ impl DefectService {
         }
 
         let txn_no = if head.process_method == "TO_BAD_STOCK" {
-            let (src_wh, src_loc, tgt_wh, tgt_loc) = self.repo.get_locations(ctx.tenant_id, id).await?;
-            let tgt_wh = tgt_wh.ok_or_else(|| {
-                AppError::validation("TO_BAD_STOCK 必须指定 target_wh_id")
-            })?;
-            let tgt_loc = tgt_loc.ok_or_else(|| {
-                AppError::validation("TO_BAD_STOCK 必须指定 target_loc_id")
-            })?;
+            let (src_wh, src_loc, tgt_wh, tgt_loc) =
+                self.repo.get_locations(ctx.tenant_id, id).await?;
+            let tgt_wh =
+                tgt_wh.ok_or_else(|| AppError::validation("TO_BAD_STOCK 必须指定 target_wh_id"))?;
+            let tgt_loc = tgt_loc
+                .ok_or_else(|| AppError::validation("TO_BAD_STOCK 必须指定 target_loc_id"))?;
 
             // TRANSFER:一行 OUT QUALIFIED + 一行 IN BAD,同批次同数量
             let mut lines = Vec::with_capacity(head.lines.len() * 2);
@@ -273,7 +273,9 @@ impl DefectService {
             None
         };
 
-        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Completed).await?;
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Completed)
+            .await?;
 
         Ok(SubmitDefectResult {
             defect_id: head.id,
@@ -296,7 +298,9 @@ impl DefectService {
         if !status.can_void() {
             return Err(DefectError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Voided).await
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Voided)
+            .await
     }
 
     pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<DefectHeadView, AppError> {

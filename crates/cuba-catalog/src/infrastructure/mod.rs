@@ -5,6 +5,7 @@
 pub mod bom_repo;
 pub mod material_repo;
 pub mod party_repo;
+pub mod recovery_tpl_repo;
 pub mod route_repo;
 pub mod status_flow_repo;
 

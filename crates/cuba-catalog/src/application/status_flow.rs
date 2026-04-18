@@ -38,7 +38,9 @@ pub struct StatusFlowService {
 impl StatusFlowService {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { repo: Arc::new(PgStatusFlowRepository::new(pool)) }
+        Self {
+            repo: Arc::new(PgStatusFlowRepository::new(pool)),
+        }
     }
 
     pub async fn list(&self, q: &QueryStatusFlow) -> Result<Vec<StatusFlowView>, AppError> {

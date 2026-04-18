@@ -134,7 +134,8 @@ impl ScrapService {
             return Err(ScrapError::empty_lines());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -143,11 +144,7 @@ impl ScrapService {
     }
 
     /// submit:TRANSFER 从源仓位(BAD)→ 报废仓(SCRAPPED)
-    pub async fn submit(
-        &self,
-        ctx: &AuditContext,
-        id: i64,
-    ) -> Result<SubmitScrapResult, AppError> {
+    pub async fn submit(&self, ctx: &AuditContext, id: i64) -> Result<SubmitScrapResult, AppError> {
         let head = self.repo.get(id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
@@ -240,7 +237,9 @@ impl ScrapService {
         };
         let committed = self.inventory.commit(ctx, tcmd).await?;
 
-        self.repo.update_status(head.id, DocStatus::Completed).await?;
+        self.repo
+            .update_status(head.id, DocStatus::Completed)
+            .await?;
 
         Ok(SubmitScrapResult {
             scrap_id: head.id,

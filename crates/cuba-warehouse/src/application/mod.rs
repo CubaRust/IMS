@@ -131,7 +131,8 @@ impl WarehouseService {
         _ctx: &AuditContext,
         cmd: CreateWarehouseCommand,
     ) -> Result<WarehouseView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_wh_type(&cmd.wh_type) {
             return Err(WarehouseError::invalid_wh_type(&cmd.wh_type));
         }
@@ -144,7 +145,8 @@ impl WarehouseService {
         id: i64,
         cmd: UpdateWarehouseCommand,
     ) -> Result<WarehouseView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_wh_type(&cmd.wh_type) {
             return Err(WarehouseError::invalid_wh_type(&cmd.wh_type));
         }
@@ -167,9 +169,13 @@ impl WarehouseService {
         _ctx: &AuditContext,
         cmd: CreateLocationCommand,
     ) -> Result<LocationView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_loc_type(&cmd.loc_type) {
-            return Err(AppError::validation(format!("未知的仓位类型: {}", cmd.loc_type)));
+            return Err(AppError::validation(format!(
+                "未知的仓位类型: {}",
+                cmd.loc_type
+            )));
         }
         self.repo.create_location(&cmd).await
     }
@@ -180,17 +186,18 @@ impl WarehouseService {
         id: i64,
         cmd: UpdateLocationCommand,
     ) -> Result<LocationView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_loc_type(&cmd.loc_type) {
-            return Err(AppError::validation(format!("未知的仓位类型: {}", cmd.loc_type)));
+            return Err(AppError::validation(format!(
+                "未知的仓位类型: {}",
+                cmd.loc_type
+            )));
         }
         self.repo.update_location(id, &cmd).await
     }
 
-    pub async fn list_locations(
-        &self,
-        q: &QueryLocations,
-    ) -> Result<Vec<LocationView>, AppError> {
+    pub async fn list_locations(&self, q: &QueryLocations) -> Result<Vec<LocationView>, AppError> {
         self.repo.list_locations(q).await
     }
 

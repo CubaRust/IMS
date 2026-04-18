@@ -96,8 +96,9 @@ async fn run_migrations(pool: &PgPool) -> anyhow::Result<()> {
 }
 
 fn find_migrations_dir() -> anyhow::Result<std::path::PathBuf> {
-    let cur =
-        std::env::var("CARGO_MANIFEST_DIR").map(std::path::PathBuf::from).unwrap_or_default();
+    let cur = std::env::var("CARGO_MANIFEST_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_default();
     let mut candidates = vec![
         cur.join("../../migrations"),
         cur.join("../migrations"),

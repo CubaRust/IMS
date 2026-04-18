@@ -10,8 +10,8 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
 use crate::application::{
-    CreateRecoveryCommand, QueryRecoveries, RecoveryHeadView, RecoveryInView,
-    RecoveryOutView, RecoveryScrapView,
+    CreateRecoveryCommand, QueryRecoveries, RecoveryHeadView, RecoveryInView, RecoveryOutView,
+    RecoveryScrapView,
 };
 
 #[async_trait]
@@ -63,7 +63,8 @@ impl RecoveryRepository for PgRecoveryRepository {
         let mut tx = self.pool.begin().await?;
 
         let recovery_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('RECOVERY')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let extra = serde_json::json!({
             "source_wh_id":  cmd.source_wh_id,
@@ -89,7 +90,8 @@ impl RecoveryRepository for PgRecoveryRepository {
         .bind(ctx.user_id)
         .bind(&extra)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         for l in &cmd.inputs {
             sqlx::query(
@@ -107,7 +109,8 @@ impl RecoveryRepository for PgRecoveryRepository {
             .bind(l.qty)
             .bind(&l.unit)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         for l in &cmd.outputs {
@@ -129,7 +132,8 @@ impl RecoveryRepository for PgRecoveryRepository {
             .bind(l.target_loc_id)
             .bind(&l.target_status)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         for l in &cmd.scraps {
@@ -148,7 +152,8 @@ impl RecoveryRepository for PgRecoveryRepository {
             .bind(&l.unit)
             .bind(&l.scrap_reason)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         tx.commit().await?;
@@ -183,8 +188,13 @@ impl RecoveryRepository for PgRecoveryRepository {
              order by i.line_no
             "#,
         )
-        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_in).collect();
+        .bind(id)
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_in)
+        .collect();
 
         let outputs = sqlx::query(
             r#"
@@ -197,8 +207,13 @@ impl RecoveryRepository for PgRecoveryRepository {
              order by o.line_no
             "#,
         )
-        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_out).collect();
+        .bind(id)
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_out)
+        .collect();
 
         let scraps = sqlx::query(
             r#"
@@ -210,8 +225,13 @@ impl RecoveryRepository for PgRecoveryRepository {
              order by s.line_no
             "#,
         )
-        .bind(id).bind(tenant_id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_scrap).collect();
+        .bind(id)
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_scrap)
+        .collect();
 
         Ok(row_to_head(head, inputs, outputs, scraps))
     }
@@ -233,14 +253,27 @@ impl RecoveryRepository for PgRecoveryRepository {
             "#,
         );
         qb.push_bind(tenant_id);
-        if let Some(no) = &q.recovery_no { qb.push(" and h.recovery_no = ").push_bind(no.clone()); }
-        if let Some(d)  = q.source_defect_id { qb.push(" and h.source_defect_id = ").push_bind(d); }
-        if let Some(s)  = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(f)  = q.date_from { qb.push(" and h.recovery_date >= ").push_bind(f); }
-        if let Some(t)  = q.date_to { qb.push(" and h.recovery_date <= ").push_bind(t); }
+        if let Some(no) = &q.recovery_no {
+            qb.push(" and h.recovery_no = ").push_bind(no.clone());
+        }
+        if let Some(d) = q.source_defect_id {
+            qb.push(" and h.source_defect_id = ").push_bind(d);
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(f) = q.date_from {
+            qb.push(" and h.recovery_date >= ").push_bind(f);
+        }
+        if let Some(t) = q.date_to {
+            qb.push(" and h.recovery_date <= ").push_bind(t);
+        }
         qb.push(" order by h.recovery_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
-        Ok(rows.into_iter().map(|r| row_to_head(r, vec![], vec![], vec![])).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| row_to_head(r, vec![], vec![], vec![]))
+            .collect())
     }
 
     async fn update_status(
@@ -255,7 +288,8 @@ impl RecoveryRepository for PgRecoveryRepository {
         .bind(status.as_str())
         .bind(id)
         .bind(tenant_id)
-        .execute(&self.pool).await?;
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
@@ -269,16 +303,25 @@ impl RecoveryRepository for PgRecoveryRepository {
         )
         .bind(id)
         .bind(tenant_id)
-        .fetch_optional(&self.pool).await?
+        .fetch_optional(&self.pool)
+        .await?
         .ok_or_else(|| AppError::not_found(format!("拆解回收单 id={id} 不存在")))?;
 
-        let sw = extra.get("source_wh_id").and_then(|v| v.as_i64())
+        let sw = extra
+            .get("source_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_wh_id 缺失"))?;
-        let sl = extra.get("source_loc_id").and_then(|v| v.as_i64())
+        let sl = extra
+            .get("source_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_loc_id 缺失"))?;
-        let xw = extra.get("scrap_wh_id").and_then(|v| v.as_i64())
+        let xw = extra
+            .get("scrap_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("scrap_wh_id 缺失"))?;
-        let xl = extra.get("scrap_loc_id").and_then(|v| v.as_i64())
+        let xl = extra
+            .get("scrap_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("scrap_loc_id 缺失"))?;
         Ok((sw, sl, xw, xl))
     }

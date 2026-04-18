@@ -18,6 +18,6 @@ pub mod service;
 
 pub use repo::{PgPmcRepository, PmcRepository};
 pub use service::{
-    CreateOutsourceCommand, CreateOutsourceLine, OutsourceHeadView, OutsourceLineView,
-    PmcService, QueryOutsources, SubmitBackCommand, SubmitBackLine, SubmitResult,
+    CreateOutsourceCommand, CreateOutsourceLine, OutsourceHeadView, OutsourceLineView, PmcService,
+    QueryOutsources, SubmitBackCommand, SubmitBackLine, SubmitResult,
 };

@@ -8,9 +8,7 @@ use sqlx::PgPool;
 use time::{Date, PrimitiveDateTime};
 use validator::Validate;
 
-use cuba_inventory::{
-    CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput,
-};
+use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput};
 use cuba_preissue::PreissueService;
 use cuba_shared::{
     audit::AuditContext,
@@ -18,9 +16,7 @@ use cuba_shared::{
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
-use crate::domain::{
-    default_target_status, is_valid_inbound_type, scene_code_for, InboundError,
-};
+use crate::domain::{default_target_status, is_valid_inbound_type, scene_code_for, InboundError};
 use crate::infrastructure::repository::{InboundRepository, PgInboundRepository};
 
 // -- View --------------------------------------------------------------------
@@ -159,7 +155,8 @@ impl InboundService {
             return Err(InboundError::empty_lines());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -213,9 +210,9 @@ impl InboundService {
         // 推断 target 仓位
         let target = TxnSideInput {
             wh_id: head.wh_id,
-            loc_id: head.loc_id.ok_or_else(|| {
-                AppError::validation("入库单未指定 loc_id,无法提交到库存")
-            })?,
+            loc_id: head
+                .loc_id
+                .ok_or_else(|| AppError::validation("入库单未指定 loc_id,无法提交到库存"))?,
             status: Some(StockStatus::try_from(target_status_default)?),
         };
 
@@ -246,7 +243,13 @@ impl InboundService {
         for l in &head.lines {
             if let Some(preissue_line_id) = l.related_preissue_line_id {
                 self.preissue
-                    .close_line(ctx, preissue_line_id, l.qty, head.wh_id, target_loc_for_close)
+                    .close_line(
+                        ctx,
+                        preissue_line_id,
+                        l.qty,
+                        head.wh_id,
+                        target_loc_for_close,
+                    )
                     .await?;
             }
         }

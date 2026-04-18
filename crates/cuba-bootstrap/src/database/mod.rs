@@ -23,9 +23,7 @@ pub async fn connect(cfg: &AppConfig) -> Result<Db, AppError> {
         .acquire_timeout(Duration::from_secs(10))
         .connect(&cfg.database_url)
         .await
-        .map_err(|e| {
-            AppError::Internal(anyhow::anyhow!("数据库连接失败: {e}"))
-        })?;
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("数据库连接失败: {e}")))?;
 
     // 轻量 ping 确认
     sqlx::query("select 1").execute(&pool).await?;

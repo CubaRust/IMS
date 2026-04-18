@@ -7,8 +7,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
 use crate::service::{
-    CreateStocktakeCommand, QueryStocktakes, RecordCountLine, StocktakeHeadView,
-    StocktakeLineView,
+    CreateStocktakeCommand, QueryStocktakes, RecordCountLine, StocktakeHeadView, StocktakeLineView,
 };
 
 #[async_trait]
@@ -45,7 +44,8 @@ impl StocktakeRepository for PgStocktakeRepository {
         let mut tx = self.pool.begin().await?;
 
         let stocktake_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('STOCKTAKE')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let id: i64 = sqlx::query_scalar(
             r#"
@@ -62,7 +62,8 @@ impl StocktakeRepository for PgStocktakeRepository {
         .bind(cmd.stocktake_date)
         .bind(ctx.user_id)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         if cmd.snapshot_from_balance {
             // 从 inv.balance 快照该仓(位)所有非零余额为盘点行
@@ -76,7 +77,9 @@ impl StocktakeRepository for PgStocktakeRepository {
                 "#,
             );
             qb.push_bind(id);
-            qb.push(", row_number() over (order by b.material_id, b.batch_no, b.stock_status)::int,");
+            qb.push(
+                ", row_number() over (order by b.material_id, b.batch_no, b.stock_status)::int,",
+            );
             qb.push(" b.material_id, b.batch_no, b.stock_status, b.book_qty, m.unit, false");
             qb.push(" from inv.balance b ");
             qb.push(" join mdm.mdm_material m on m.id = b.material_id");
@@ -104,7 +107,8 @@ impl StocktakeRepository for PgStocktakeRepository {
                 .bind(l.book_qty)
                 .bind(&l.unit)
                 .bind(&l.note)
-                .execute(&mut *tx).await?;
+                .execute(&mut *tx)
+                .await?;
             }
         }
 
@@ -125,7 +129,8 @@ impl StocktakeRepository for PgStocktakeRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool).await?
+        .fetch_optional(&self.pool)
+        .await?
         .ok_or_else(|| AppError::not_found(format!("盘点单 id={id} 不存在")))?;
 
         let lines = sqlx::query(
@@ -143,8 +148,12 @@ impl StocktakeRepository for PgStocktakeRepository {
              order by d.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_line).collect();
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_line)
+        .collect();
 
         Ok(row_to_head(head, lines))
     }
@@ -161,11 +170,21 @@ impl StocktakeRepository for PgStocktakeRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &q.stocktake_no { qb.push(" and h.stocktake_no = ").push_bind(no.clone()); }
-        if let Some(w) = q.wh_id { qb.push(" and h.wh_id = ").push_bind(w); }
-        if let Some(s) = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(f) = q.date_from { qb.push(" and h.stocktake_date >= ").push_bind(f); }
-        if let Some(t) = q.date_to { qb.push(" and h.stocktake_date <= ").push_bind(t); }
+        if let Some(no) = &q.stocktake_no {
+            qb.push(" and h.stocktake_no = ").push_bind(no.clone());
+        }
+        if let Some(w) = q.wh_id {
+            qb.push(" and h.wh_id = ").push_bind(w);
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(f) = q.date_from {
+            qb.push(" and h.stocktake_date >= ").push_bind(f);
+        }
+        if let Some(t) = q.date_to {
+            qb.push(" and h.stocktake_date <= ").push_bind(t);
+        }
         qb.push(" order by h.stocktake_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
@@ -175,7 +194,8 @@ impl StocktakeRepository for PgStocktakeRepository {
         sqlx::query("update wms.wms_stocktake_h set doc_status = $1 where id = $2")
             .bind(status.as_str())
             .bind(id)
-            .execute(&self.pool).await?;
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -194,7 +214,8 @@ impl StocktakeRepository for PgStocktakeRepository {
             .bind(&l.note)
             .bind(l.line_id)
             .bind(id)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
         tx.commit().await?;
         Ok(())

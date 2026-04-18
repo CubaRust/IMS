@@ -10,9 +10,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
-use crate::application::{
-    CreateDefectCommand, DefectHeadView, DefectLineView, QueryDefects,
-};
+use crate::application::{CreateDefectCommand, DefectHeadView, DefectLineView, QueryDefects};
 
 #[async_trait]
 pub trait DefectRepository: Send + Sync {
@@ -22,11 +20,8 @@ pub trait DefectRepository: Send + Sync {
         cmd: &CreateDefectCommand,
     ) -> Result<DefectHeadView, AppError>;
     async fn get(&self, tenant_id: i64, id: i64) -> Result<DefectHeadView, AppError>;
-    async fn list(
-        &self,
-        tenant_id: i64,
-        q: &QueryDefects,
-    ) -> Result<Vec<DefectHeadView>, AppError>;
+    async fn list(&self, tenant_id: i64, q: &QueryDefects)
+        -> Result<Vec<DefectHeadView>, AppError>;
     async fn update_status(
         &self,
         tenant_id: i64,
@@ -209,14 +204,12 @@ impl DefectRepository for PgDefectRepository {
         id: i64,
         status: DocStatus,
     ) -> Result<(), AppError> {
-        sqlx::query(
-            "update wms.wms_defect_h set doc_status = $1 where id = $2 and tenant_id = $3",
-        )
-        .bind(status.as_str())
-        .bind(id)
-        .bind(tenant_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("update wms.wms_defect_h set doc_status = $1 where id = $2 and tenant_id = $3")
+            .bind(status.as_str())
+            .bind(id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -234,9 +227,13 @@ impl DefectRepository for PgDefectRepository {
         .await?
         .ok_or_else(|| AppError::not_found(format!("不良单 id={id} 不存在")))?;
 
-        let src_wh = extra.get("source_wh_id").and_then(|v| v.as_i64())
+        let src_wh = extra
+            .get("source_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_wh_id 缺失"))?;
-        let src_loc = extra.get("source_loc_id").and_then(|v| v.as_i64())
+        let src_loc = extra
+            .get("source_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_loc_id 缺失"))?;
         let tgt_wh = extra.get("target_wh_id").and_then(|v| v.as_i64());
         let tgt_loc = extra.get("target_loc_id").and_then(|v| v.as_i64());

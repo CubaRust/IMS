@@ -30,6 +30,16 @@ pub const JUDGE_METHODS: &[&str] = &[
     "TO_CHECK",
 ];
 
+/// Maps judge_method to judge_result for wms_customer_return_judge table
+pub fn judge_method_to_result(method: &str) -> &'static str {
+    match method {
+        "RETURN_TO_STOCK" | "TO_CHECK" => "QUALIFIED",
+        "TO_DEFECT" | "TO_SUPPLIER_RETURN" => "BAD",
+        "TO_SCRAP" => "SCRAPPED",
+        _ => "QUALIFIED",
+    }
+}
+
 // -- View --------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +172,8 @@ impl CustomerReturnService {
             return Err(AppError::business(CR_EMPTY_LINES, "客户退货行不能为空"));
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -180,7 +191,7 @@ impl CustomerReturnService {
 
     pub async fn judge(
         &self,
-        _ctx: &AuditContext,
+        ctx: &AuditContext,
         id: i64,
         lines: Vec<JudgeLineCommand>,
     ) -> Result<(), AppError> {
@@ -192,7 +203,7 @@ impl CustomerReturnService {
                 ));
             }
         }
-        self.repo.update_judges(id, &lines).await
+        self.repo.update_judges(id, &lines, ctx).await
     }
 
     /// submit:按各行 judge_method 分组,产生多个 IN 事务
@@ -236,18 +247,18 @@ impl CustomerReturnService {
                     let w = locs.defect_wh.ok_or_else(|| {
                         AppError::validation("TO_DEFECT 需要 defect_wh_id/loc_id")
                     })?;
-                    let l = locs.defect_loc.ok_or_else(|| {
-                        AppError::validation("TO_DEFECT 需要 defect_loc_id")
-                    })?;
+                    let l = locs
+                        .defect_loc
+                        .ok_or_else(|| AppError::validation("TO_DEFECT 需要 defect_loc_id"))?;
                     (w, l, StockStatus::Bad)
                 }
                 "TO_SCRAP" => {
-                    let w = locs.scrap_wh.ok_or_else(|| {
-                        AppError::validation("TO_SCRAP 需要 scrap_wh_id")
-                    })?;
-                    let l = locs.scrap_loc.ok_or_else(|| {
-                        AppError::validation("TO_SCRAP 需要 scrap_loc_id")
-                    })?;
+                    let w = locs
+                        .scrap_wh
+                        .ok_or_else(|| AppError::validation("TO_SCRAP 需要 scrap_wh_id"))?;
+                    let l = locs
+                        .scrap_loc
+                        .ok_or_else(|| AppError::validation("TO_SCRAP 需要 scrap_loc_id"))?;
                     (w, l, StockStatus::Scrapped)
                 }
                 "TO_SUPPLIER_RETURN" => {
@@ -291,7 +302,11 @@ impl CustomerReturnService {
                 target_object_type: Some("CUSTOMER".into()),
                 target_object_id: Some(head.customer_id),
                 source: None,
-                target: Some(TxnSideInput { wh_id: wh, loc_id: loc, status: Some(stat) }),
+                target: Some(TxnSideInput {
+                    wh_id: wh,
+                    loc_id: loc,
+                    status: Some(stat),
+                }),
                 lines: txn_lines,
                 is_exception: method != "RETURN_TO_STOCK",
                 exception_type: if method != "RETURN_TO_STOCK" {

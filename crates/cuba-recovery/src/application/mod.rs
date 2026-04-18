@@ -191,13 +191,16 @@ impl RecoveryService {
             return Err(RecoveryError::empty_in());
         }
         for l in &cmd.inputs {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
         }
         for l in &cmd.outputs {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
         }
         for l in &cmd.scraps {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
         }
         self.repo.create(ctx, &cmd).await
     }
@@ -211,10 +214,14 @@ impl RecoveryService {
         let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
-            return Err(RecoveryError::invalid_transition(&head.doc_status, "submit"));
+            return Err(RecoveryError::invalid_transition(
+                &head.doc_status,
+                "submit",
+            ));
         }
 
-        let (src_wh, src_loc, scrap_wh, scrap_loc) = self.repo.get_locations(ctx.tenant_id, id).await?;
+        let (src_wh, src_loc, scrap_wh, scrap_loc) =
+            self.repo.get_locations(ctx.tenant_id, id).await?;
 
         // CONVERT 里要求:至少一条 OUT + 至少一条 IN;这里我们批量构造
         let mut lines: Vec<TxnLineInput> = Vec::new();
@@ -256,7 +263,8 @@ impl RecoveryService {
                 (
                     o.target_wh_id.unwrap_or(src_wh),
                     o.target_loc_id.unwrap_or(src_loc),
-                    StockStatus::try_from(o.target_status.as_str()).unwrap_or(StockStatus::Qualified),
+                    StockStatus::try_from(o.target_status.as_str())
+                        .unwrap_or(StockStatus::Qualified),
                 )
             })
             .unwrap_or((src_wh, src_loc, StockStatus::Qualified));
@@ -265,8 +273,8 @@ impl RecoveryService {
             if l.qty <= Decimal::ZERO {
                 continue;
             }
-            let stat = StockStatus::try_from(l.target_status.as_str())
-                .unwrap_or(StockStatus::Qualified);
+            let stat =
+                StockStatus::try_from(l.target_status.as_str()).unwrap_or(StockStatus::Qualified);
             lines.push(TxnLineInput {
                 line_no,
                 material_id: l.material_id,
@@ -351,7 +359,9 @@ impl RecoveryService {
         };
         let committed = self.inventory.commit(ctx, tcmd).await?;
 
-        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Completed).await?;
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Completed)
+            .await?;
 
         Ok(SubmitRecoveryResult {
             recovery_id: head.id,
@@ -367,7 +377,9 @@ impl RecoveryService {
         if !status.can_void() {
             return Err(RecoveryError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(ctx.tenant_id, head.id, DocStatus::Voided).await
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Voided)
+            .await
     }
 
     pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<RecoveryHeadView, AppError> {

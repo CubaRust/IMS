@@ -47,10 +47,7 @@ impl OutboundError {
 
     #[must_use]
     pub fn workorder_required() -> AppError {
-        AppError::business(
-            OUT_WORKORDER_REQUIRED,
-            "生产发料/工序发料必须绑定工单号",
-        )
+        AppError::business(OUT_WORKORDER_REQUIRED, "生产发料/工序发料必须绑定工单号")
     }
 }
 

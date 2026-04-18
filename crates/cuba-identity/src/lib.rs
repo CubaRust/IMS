@@ -21,6 +21,10 @@ pub mod application;
 pub mod domain;
 pub mod infrastructure;
 
+pub use application::system_config::{
+    CreateDictCommand, DictView, DocNoRuleView, QueryDicts, SystemConfigService, UpdateDictCommand,
+    UpdateDocNoRuleCommand,
+};
 pub use application::{
     ChangePasswordCommand, IdentityService, LoginCommand, LoginResult, UserView,
 };

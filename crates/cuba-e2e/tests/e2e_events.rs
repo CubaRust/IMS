@@ -59,7 +59,10 @@ async fn inbound_submit_writes_both_events() {
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert!(inv_cnt >= 1, "expected InventoryTxnCommitted, got {inv_cnt}");
+    assert!(
+        inv_cnt >= 1,
+        "expected InventoryTxnCommitted, got {inv_cnt}"
+    );
 
     // 必有 InboundSubmitted
     let in_cnt: i64 = sqlx::query_scalar(
@@ -123,11 +126,10 @@ async fn outbox_flag_is_unpublished_by_default() {
         .unwrap();
     inb.submit(&ctx, ih.id).await.unwrap();
 
-    let unpub: i64 = sqlx::query_scalar(
-        "select count(*) from events.domain_event where published = false",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let unpub: i64 =
+        sqlx::query_scalar("select count(*) from events.domain_event where published = false")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert!(unpub >= 2, "outbox 应有至少 2 条未 publish,实际 {unpub}");
 }

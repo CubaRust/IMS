@@ -11,6 +11,10 @@
 pub mod service;
 
 pub use service::{
-    AgingBucketRow, DormantRow, ExceptionSummaryRow, QueryAging, QueryDormant,
-    QueryExceptionSummary, QueryTxnFlow, ReportingService, TxnFlowRow,
+    AgingBucketRow, AnomalyTodoRow, DashboardData, DefectStats30dRow, DormantRow,
+    ExceptionSummaryRow, InventoryByLocationRow, InventoryByMaterialRow, LowStockWarningRow,
+    OutsourceInTransitRow, QueryAging, QueryAnomalyTodo, QueryDefectStats30d, QueryDormant,
+    QueryExceptionSummary, QueryInventoryByLocation, QueryInventoryByMaterial,
+    QueryLowStockWarning, QueryOutsourceInTransit, QueryTodayIo, QueryTxnFlow, ReportingService,
+    TodayIoRow, TxnFlowRow,
 };

@@ -153,13 +153,8 @@ pub async fn start(pool: PgPool, cfg: SchedulerConfig) -> anyhow::Result<Option<
 /// 执行一个 job 的包装:拿 advisory lock → 写 RUNNING 日志 → 跑 fn → 写结果
 ///
 /// `lock_key` 在本库全局唯一(见各 job 常量),保证多实例互斥
-async fn run_job<F>(
-    name: &str,
-    lock_key: i64,
-    pool: &PgPool,
-    cfg: &SchedulerConfig,
-    f: F,
-) where
+async fn run_job<F>(name: &str, lock_key: i64, pool: &PgPool, cfg: &SchedulerConfig, f: F)
+where
     F: FnOnce(PgPool) -> Pin<Box<dyn Future<Output = anyhow::Result<serde_json::Value>> + Send>>,
 {
     let host = cfg.host.clone();

@@ -52,11 +52,7 @@ async fn logout_invalidates_token() {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        r.status().as_u16(),
-        401,
-        "吊销后旧 token 应返回 401"
-    );
+    assert_eq!(r.status().as_u16(), 401, "吊销后旧 token 应返回 401");
 }
 
 #[tokio::test]
@@ -86,7 +82,11 @@ async fn refresh_gives_new_token_and_old_invalid() {
         .json()
         .await
         .unwrap();
-    assert_eq!(refreshed["code"].as_i64().unwrap_or(-1), 0, "refresh: {refreshed}");
+    assert_eq!(
+        refreshed["code"].as_i64().unwrap_or(-1),
+        0,
+        "refresh: {refreshed}"
+    );
     let new_token = refreshed["data"]["token"].as_str().unwrap().to_string();
     assert_ne!(old_token, new_token, "新旧 token 应不同");
 

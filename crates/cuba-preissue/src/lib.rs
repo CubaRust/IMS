@@ -24,7 +24,7 @@ pub mod domain;
 pub mod infrastructure;
 
 pub use application::{
-    CreatePreissueCommand, CreatePreissueLine, PreissueHeadView, PreissueLineView,
-    PreissueService, QueryPreissues, SubmitPreissueResult,
+    CreatePreissueCommand, CreatePreissueLine, PreissueHeadView, PreissueLineView, PreissueService,
+    QueryPreissues, SubmitPreissueResult,
 };
 pub use infrastructure::repository::{PgPreissueRepository, PreissueRepository};

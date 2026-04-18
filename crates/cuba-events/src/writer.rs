@@ -53,9 +53,8 @@ async fn insert<'c, E>(
 where
     E: PgExecutor<'c>,
 {
-    let payload = serde_json::to_value(event).map_err(|e| {
-        AppError::Internal(anyhow::anyhow!("event serialize failed: {e}"))
-    })?;
+    let payload = serde_json::to_value(event)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("event serialize failed: {e}")))?;
 
     sqlx::query(
         r#"

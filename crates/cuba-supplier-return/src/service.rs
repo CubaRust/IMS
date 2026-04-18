@@ -128,7 +128,8 @@ impl SupplierReturnService {
             return Err(AppError::business(SR_EMPTY_LINES, "退供单行不能为空"));
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }

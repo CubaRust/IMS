@@ -18,12 +18,12 @@ pub fn utc_now_primitive() -> PrimitiveDateTime {
     PrimitiveDateTime::new(now.date(), now.time())
 }
 
-/// OffsetDateTime -> RFC3339 字符串
+/// `OffsetDateTime` -> RFC3339 字符串
 pub fn format_rfc3339(t: OffsetDateTime) -> String {
     t.format(&Rfc3339).unwrap_or_else(|_| t.to_string())
 }
 
-/// 解析 RFC3339 字符串 -> OffsetDateTime
+/// 解析 RFC3339 字符串 -> `OffsetDateTime`
 pub fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, time::error::Parse> {
     OffsetDateTime::parse(s, &Rfc3339)
 }

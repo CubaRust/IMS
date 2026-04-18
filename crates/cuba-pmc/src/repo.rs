@@ -10,8 +10,7 @@ use sqlx::{postgres::PgRow, PgPool, Postgres, Row};
 use cuba_shared::{audit::AuditContext, error::AppError, types::DocStatus};
 
 use crate::service::{
-    CreateOutsourceCommand, OutsourceHeadView, OutsourceLineView, QueryOutsources,
-    SubmitBackLine,
+    CreateOutsourceCommand, OutsourceHeadView, OutsourceLineView, QueryOutsources, SubmitBackLine,
 };
 
 #[async_trait]
@@ -25,11 +24,7 @@ pub trait PmcRepository: Send + Sync {
     async fn list(&self, q: &QueryOutsources) -> Result<Vec<OutsourceHeadView>, AppError>;
     async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
     async fn mark_sent(&self, id: i64) -> Result<(), AppError>;
-    async fn append_back(
-        &self,
-        id: i64,
-        lines: &[SubmitBackLine],
-    ) -> Result<(), AppError>;
+    async fn append_back(&self, id: i64, lines: &[SubmitBackLine]) -> Result<(), AppError>;
     async fn get_locations(&self, id: i64) -> Result<(i64, i64, i64, i64), AppError>;
 }
 
@@ -54,7 +49,8 @@ impl PmcRepository for PgPmcRepository {
         let mut tx = self.pool.begin().await?;
 
         let outsource_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('OUTSOURCE')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let extra = serde_json::json!({
             "send_wh_id": cmd.send_wh_id,
@@ -80,7 +76,8 @@ impl PmcRepository for PgPmcRepository {
         .bind(ctx.user_id)
         .bind(&extra)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         for l in &cmd.send_lines {
             sqlx::query(
@@ -97,7 +94,8 @@ impl PmcRepository for PgPmcRepository {
             .bind(l.qty)
             .bind(&l.unit)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         tx.commit().await?;
@@ -116,7 +114,8 @@ impl PmcRepository for PgPmcRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool).await?
+        .fetch_optional(&self.pool)
+        .await?
         .ok_or_else(|| AppError::not_found(format!("委外单 id={id} 不存在")))?;
 
         let send_lines = sqlx::query(
@@ -131,8 +130,12 @@ impl PmcRepository for PgPmcRepository {
              order by d.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_line).collect();
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_line)
+        .collect();
 
         let back_lines = sqlx::query(
             r#"
@@ -147,8 +150,12 @@ impl PmcRepository for PgPmcRepository {
              order by d.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_line).collect();
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_line)
+        .collect();
 
         Ok(row_to_head(head, send_lines, back_lines))
     }
@@ -164,21 +171,35 @@ impl PmcRepository for PgPmcRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &q.outsource_no { qb.push(" and h.outsource_no = ").push_bind(no.clone()); }
-        if let Some(sid) = q.supplier_id { qb.push(" and h.supplier_id = ").push_bind(sid); }
-        if let Some(s) = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(f) = q.date_from { qb.push(" and h.issue_date >= ").push_bind(f); }
-        if let Some(t) = q.date_to { qb.push(" and h.issue_date <= ").push_bind(t); }
+        if let Some(no) = &q.outsource_no {
+            qb.push(" and h.outsource_no = ").push_bind(no.clone());
+        }
+        if let Some(sid) = q.supplier_id {
+            qb.push(" and h.supplier_id = ").push_bind(sid);
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(f) = q.date_from {
+            qb.push(" and h.issue_date >= ").push_bind(f);
+        }
+        if let Some(t) = q.date_to {
+            qb.push(" and h.issue_date <= ").push_bind(t);
+        }
         qb.push(" order by h.issue_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
-        Ok(rows.into_iter().map(|r| row_to_head(r, vec![], vec![])).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| row_to_head(r, vec![], vec![]))
+            .collect())
     }
 
     async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError> {
         sqlx::query("update wms.wms_outsource_h set doc_status = $1 where id = $2")
             .bind(status.as_str())
             .bind(id)
-            .execute(&self.pool).await?;
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -196,11 +217,7 @@ impl PmcRepository for PgPmcRepository {
         Ok(())
     }
 
-    async fn append_back(
-        &self,
-        id: i64,
-        lines: &[SubmitBackLine],
-    ) -> Result<(), AppError> {
+    async fn append_back(&self, id: i64, lines: &[SubmitBackLine]) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await?;
         // 简单实现:每次回料 insert 新行(不合并)
         let next_no: i32 = sqlx::query_scalar(
@@ -224,7 +241,8 @@ impl PmcRepository for PgPmcRepository {
             .bind(l.qty)
             .bind(&l.unit)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         // 聚合判定:若 back 总量 >= send 总量,则整单完成
@@ -232,7 +250,8 @@ impl PmcRepository for PgPmcRepository {
             "select coalesce(sum(qty), 0) from wms.wms_outsource_send_d where outsource_id = $1",
         )
         .bind(id)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
         let back_total: Decimal = sqlx::query_scalar(
             "select coalesce(sum(actual_qty), 0) from wms.wms_outsource_back_d where outsource_id = $1",
         )
@@ -263,27 +282,36 @@ impl PmcRepository for PgPmcRepository {
         .bind(new_back_status)
         .bind(new_doc_status)
         .bind(id)
-        .execute(&mut *tx).await?;
+        .execute(&mut *tx)
+        .await?;
 
         tx.commit().await?;
         Ok(())
     }
 
     async fn get_locations(&self, id: i64) -> Result<(i64, i64, i64, i64), AppError> {
-        let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_outsource_h where id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool).await?
-        .ok_or_else(|| AppError::not_found(format!("委外单 id={id} 不存在")))?;
+        let extra: serde_json::Value =
+            sqlx::query_scalar("select extra_json from wms.wms_outsource_h where id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::not_found(format!("委外单 id={id} 不存在")))?;
 
-        let sw = extra.get("send_wh_id").and_then(|v| v.as_i64())
+        let sw = extra
+            .get("send_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("send_wh_id 缺失"))?;
-        let sl = extra.get("send_loc_id").and_then(|v| v.as_i64())
+        let sl = extra
+            .get("send_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("send_loc_id 缺失"))?;
-        let bw = extra.get("back_wh_id").and_then(|v| v.as_i64())
+        let bw = extra
+            .get("back_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("back_wh_id 缺失"))?;
-        let bl = extra.get("back_loc_id").and_then(|v| v.as_i64())
+        let bl = extra
+            .get("back_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("back_loc_id 缺失"))?;
         Ok((sw, sl, bw, bl))
     }
@@ -294,7 +322,9 @@ fn row_to_head(
     send_lines: Vec<OutsourceLineView>,
     back_lines: Vec<OutsourceLineView>,
 ) -> OutsourceHeadView {
-    let extra: serde_json::Value = row.try_get("extra_json").unwrap_or_else(|_| serde_json::json!({}));
+    let extra: serde_json::Value = row
+        .try_get("extra_json")
+        .unwrap_or_else(|_| serde_json::json!({}));
     let send_status = extra
         .get("send_status")
         .and_then(|v| v.as_str())

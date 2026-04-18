@@ -12,16 +12,18 @@
 //! ```
 
 use axum::{
-    extract::{Extension, Query, State},
+    extract::{Extension, Path, Query, State},
     routing::{get, post, put},
     Json, Router,
 };
 
 use cuba_bootstrap::AppState;
-use cuba_identity::{
-    ChangePasswordCommand, IdentityService, LoginCommand, LoginResult, UserView,
-};
 use cuba_identity::application::{PermissionView, QueryUsers, RoleView};
+use cuba_identity::{
+    ChangePasswordCommand, CreateDictCommand, DictView, DocNoRuleView, IdentityService,
+    LoginCommand, LoginResult, QueryDicts, SystemConfigService, UpdateDictCommand,
+    UpdateDocNoRuleCommand, UserView,
+};
 use cuba_shared::{audit::AuditContext, error::AppError};
 
 use crate::response::AppJson;
@@ -41,6 +43,10 @@ pub fn protected_routes() -> Router<AppState> {
         .route("/users", get(list_users))
         .route("/roles", get(list_roles))
         .route("/permissions", get(list_permissions))
+        .route("/dicts", get(list_dicts).post(create_dict))
+        .route("/dicts/:id", put(update_dict))
+        .route("/doc-no-rules", get(list_doc_no_rules))
+        .route("/doc-no-rules/:id", put(update_doc_no_rule))
 }
 
 // ---------------------------------------------------------------------------
@@ -148,4 +154,57 @@ async fn refresh(
         .ok_or_else(|| AppError::validation("JWT 缺少 exp"))?;
     let svc = build_service(&state);
     Ok(AppJson(svc.refresh(&ctx, jti, exp).await?))
+}
+
+// -- system config (dict + doc_no_rule) --------------------------------------
+
+async fn list_dicts(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+    Query(q): Query<QueryDicts>,
+) -> Result<AppJson<Vec<DictView>>, AppError> {
+    ctx.require_permission("sys.dict.view")?;
+    let svc = SystemConfigService::new(state.db_read().clone());
+    Ok(AppJson(svc.list_dicts(&q).await?))
+}
+
+async fn create_dict(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+    Json(cmd): Json<CreateDictCommand>,
+) -> Result<AppJson<DictView>, AppError> {
+    ctx.require_permission("sys.dict.edit")?;
+    let svc = SystemConfigService::new(state.db().clone());
+    Ok(AppJson(svc.create_dict(cmd).await?))
+}
+
+async fn update_dict(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+    Path(id): Path<i64>,
+    Json(cmd): Json<UpdateDictCommand>,
+) -> Result<AppJson<DictView>, AppError> {
+    ctx.require_permission("sys.dict.edit")?;
+    let svc = SystemConfigService::new(state.db().clone());
+    Ok(AppJson(svc.update_dict(id, cmd).await?))
+}
+
+async fn list_doc_no_rules(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+) -> Result<AppJson<Vec<DocNoRuleView>>, AppError> {
+    ctx.require_permission("sys.doc_no_rule.view")?;
+    let svc = SystemConfigService::new(state.db_read().clone());
+    Ok(AppJson(svc.list_doc_no_rules().await?))
+}
+
+async fn update_doc_no_rule(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+    Path(id): Path<i64>,
+    Json(cmd): Json<UpdateDocNoRuleCommand>,
+) -> Result<AppJson<DocNoRuleView>, AppError> {
+    ctx.require_permission("sys.doc_no_rule.edit")?;
+    let svc = SystemConfigService::new(state.db().clone());
+    Ok(AppJson(svc.update_doc_no_rule(id, cmd).await?))
 }

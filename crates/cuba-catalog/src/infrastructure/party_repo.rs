@@ -13,36 +13,24 @@ use crate::application::party::{
 #[async_trait]
 pub trait PartyRepository: Send + Sync {
     // supplier
-    async fn create_supplier(
-        &self,
-        cmd: &CreateSupplierCommand,
-    ) -> Result<SupplierView, AppError>;
+    async fn create_supplier(&self, cmd: &CreateSupplierCommand) -> Result<SupplierView, AppError>;
     async fn update_supplier(
         &self,
         id: i64,
         cmd: &UpdateSupplierCommand,
     ) -> Result<SupplierView, AppError>;
     async fn get_supplier(&self, id: i64) -> Result<SupplierView, AppError>;
-    async fn list_suppliers(
-        &self,
-        q: &QuerySuppliers,
-    ) -> Result<Vec<SupplierView>, AppError>;
+    async fn list_suppliers(&self, q: &QuerySuppliers) -> Result<Vec<SupplierView>, AppError>;
 
     // customer
-    async fn create_customer(
-        &self,
-        cmd: &CreateCustomerCommand,
-    ) -> Result<CustomerView, AppError>;
+    async fn create_customer(&self, cmd: &CreateCustomerCommand) -> Result<CustomerView, AppError>;
     async fn update_customer(
         &self,
         id: i64,
         cmd: &UpdateCustomerCommand,
     ) -> Result<CustomerView, AppError>;
     async fn get_customer(&self, id: i64) -> Result<CustomerView, AppError>;
-    async fn list_customers(
-        &self,
-        q: &QueryCustomers,
-    ) -> Result<Vec<CustomerView>, AppError>;
+    async fn list_customers(&self, q: &QueryCustomers) -> Result<Vec<CustomerView>, AppError>;
 }
 
 pub struct PgPartyRepository {
@@ -58,10 +46,7 @@ impl PgPartyRepository {
 
 #[async_trait]
 impl PartyRepository for PgPartyRepository {
-    async fn create_supplier(
-        &self,
-        cmd: &CreateSupplierCommand,
-    ) -> Result<SupplierView, AppError> {
+    async fn create_supplier(&self, cmd: &CreateSupplierCommand) -> Result<SupplierView, AppError> {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into mdm.mdm_supplier
@@ -126,10 +111,7 @@ impl PartyRepository for PgPartyRepository {
         Ok(row_to_supplier(row))
     }
 
-    async fn list_suppliers(
-        &self,
-        q: &QuerySuppliers,
-    ) -> Result<Vec<SupplierView>, AppError> {
+    async fn list_suppliers(&self, q: &QuerySuppliers) -> Result<Vec<SupplierView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select id, supplier_code, supplier_name, contact_name, contact_phone,
@@ -152,10 +134,7 @@ impl PartyRepository for PgPartyRepository {
         Ok(rows.into_iter().map(row_to_supplier).collect())
     }
 
-    async fn create_customer(
-        &self,
-        cmd: &CreateCustomerCommand,
-    ) -> Result<CustomerView, AppError> {
+    async fn create_customer(&self, cmd: &CreateCustomerCommand) -> Result<CustomerView, AppError> {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into mdm.mdm_customer
@@ -220,10 +199,7 @@ impl PartyRepository for PgPartyRepository {
         Ok(row_to_customer(row))
     }
 
-    async fn list_customers(
-        &self,
-        q: &QueryCustomers,
-    ) -> Result<Vec<CustomerView>, AppError> {
+    async fn list_customers(&self, q: &QueryCustomers) -> Result<Vec<CustomerView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select id, customer_code, customer_name, contact_name, contact_phone,

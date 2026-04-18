@@ -20,8 +20,8 @@ use serde::Deserialize;
 
 use cuba_bootstrap::AppState;
 use cuba_inventory::{
-    CommitTxnCommand, CommitTxnResult, InventoryService, QueryBalance, QueryTxns,
-    BalanceView, TxnHeadView, TxnLineView,
+    BalanceView, CommitTxnCommand, CommitTxnResult, InventoryService, QueryBalance, QueryTxns,
+    TxnHeadView, TxnLineView,
 };
 use cuba_shared::{
     audit::AuditContext,

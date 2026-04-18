@@ -35,7 +35,9 @@ async fn main() -> anyhow::Result<()> {
 
     // 3. DB + migration
     let db = database::connect(&cfg).await.context("连接数据库失败")?;
-    database::run_migrations(&db, &cfg).await.context("迁移失败")?;
+    database::run_migrations(&db, &cfg)
+        .await
+        .context("迁移失败")?;
 
     // 3.5 读副本池(可选)
     let db_read = match database::connect_read_pool(&cfg).await {

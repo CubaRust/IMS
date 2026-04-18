@@ -100,9 +100,7 @@ impl AppConfig {
             return Err(AppError::validation("JWT_SECRET 未设置"));
         }
         if app_env.is_prod() && jwt_secret.len() < 32 {
-            return Err(AppError::validation(
-                "生产环境 JWT_SECRET 长度至少 32 字符",
-            ));
+            return Err(AppError::validation("生产环境 JWT_SECRET 长度至少 32 字符"));
         }
 
         let cfg = Self {
@@ -113,7 +111,11 @@ impl AppConfig {
             database_url: read_env("DATABASE_URL", "")?,
             database_read_url: {
                 let v = read_env("DATABASE_READ_URL", "")?;
-                if v.is_empty() { None } else { Some(v) }
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v)
+                }
             },
             database_max_connections: read_env_parse("DATABASE_MAX_CONNECTIONS", 10)?,
             jwt_secret,

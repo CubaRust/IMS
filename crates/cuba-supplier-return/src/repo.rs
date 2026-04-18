@@ -18,10 +18,8 @@ pub trait SupplierReturnRepository: Send + Sync {
         cmd: &CreateSupplierReturnCommand,
     ) -> Result<SupplierReturnHeadView, AppError>;
     async fn get(&self, id: i64) -> Result<SupplierReturnHeadView, AppError>;
-    async fn list(
-        &self,
-        q: &QuerySupplierReturns,
-    ) -> Result<Vec<SupplierReturnHeadView>, AppError>;
+    async fn list(&self, q: &QuerySupplierReturns)
+        -> Result<Vec<SupplierReturnHeadView>, AppError>;
     async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
     async fn get_source_location(&self, id: i64) -> Result<(i64, i64), AppError>;
 }
@@ -47,7 +45,8 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
         let mut tx = self.pool.begin().await?;
 
         let return_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('SUPPLIER_RETURN')")
-            .fetch_one(&mut *tx).await?;
+            .fetch_one(&mut *tx)
+            .await?;
 
         let extra = serde_json::json!({
             "source_wh_id": cmd.source_wh_id,
@@ -70,7 +69,8 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
         .bind(ctx.user_id)
         .bind(&extra)
         .bind(&cmd.remark)
-        .fetch_one(&mut *tx).await?;
+        .fetch_one(&mut *tx)
+        .await?;
 
         for l in &cmd.lines {
             sqlx::query(
@@ -90,7 +90,8 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
             .bind(&l.source_status)
             .bind(&l.return_reason)
             .bind(&l.note)
-            .execute(&mut *tx).await?;
+            .execute(&mut *tx)
+            .await?;
         }
 
         tx.commit().await?;
@@ -109,7 +110,8 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool).await?
+        .fetch_optional(&self.pool)
+        .await?
         .ok_or_else(|| AppError::not_found(format!("退供单 id={id} 不存在")))?;
 
         let lines = sqlx::query(
@@ -123,8 +125,12 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
              order by d.line_no
             "#,
         )
-        .bind(id).fetch_all(&self.pool).await?
-        .into_iter().map(row_to_line).collect();
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(row_to_line)
+        .collect();
 
         Ok(row_to_head(head, lines))
     }
@@ -143,11 +149,21 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
              where 1 = 1
             "#,
         );
-        if let Some(no) = &q.return_no { qb.push(" and h.return_no = ").push_bind(no.clone()); }
-        if let Some(sid) = q.supplier_id { qb.push(" and h.supplier_id = ").push_bind(sid); }
-        if let Some(s) = &q.doc_status { qb.push(" and h.doc_status = ").push_bind(s.clone()); }
-        if let Some(f) = q.date_from { qb.push(" and h.return_date >= ").push_bind(f); }
-        if let Some(t) = q.date_to { qb.push(" and h.return_date <= ").push_bind(t); }
+        if let Some(no) = &q.return_no {
+            qb.push(" and h.return_no = ").push_bind(no.clone());
+        }
+        if let Some(sid) = q.supplier_id {
+            qb.push(" and h.supplier_id = ").push_bind(sid);
+        }
+        if let Some(s) = &q.doc_status {
+            qb.push(" and h.doc_status = ").push_bind(s.clone());
+        }
+        if let Some(f) = q.date_from {
+            qb.push(" and h.return_date >= ").push_bind(f);
+        }
+        if let Some(t) = q.date_to {
+            qb.push(" and h.return_date <= ").push_bind(t);
+        }
         qb.push(" order by h.return_date desc, h.id desc limit 500");
         let rows = qb.build().fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
@@ -157,21 +173,26 @@ impl SupplierReturnRepository for PgSupplierReturnRepository {
         sqlx::query("update wms.wms_supplier_return_h set doc_status = $1 where id = $2")
             .bind(status.as_str())
             .bind(id)
-            .execute(&self.pool).await?;
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
     async fn get_source_location(&self, id: i64) -> Result<(i64, i64), AppError> {
-        let extra: serde_json::Value = sqlx::query_scalar(
-            "select extra_json from wms.wms_supplier_return_h where id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool).await?
-        .ok_or_else(|| AppError::not_found(format!("退供单 id={id} 不存在")))?;
+        let extra: serde_json::Value =
+            sqlx::query_scalar("select extra_json from wms.wms_supplier_return_h where id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::not_found(format!("退供单 id={id} 不存在")))?;
 
-        let w = extra.get("source_wh_id").and_then(|v| v.as_i64())
+        let w = extra
+            .get("source_wh_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_wh_id 缺失"))?;
-        let l = extra.get("source_loc_id").and_then(|v| v.as_i64())
+        let l = extra
+            .get("source_loc_id")
+            .and_then(|v| v.as_i64())
             .ok_or_else(|| AppError::validation("source_loc_id 缺失"))?;
         Ok((w, l))
     }

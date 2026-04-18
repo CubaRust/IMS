@@ -18,6 +18,10 @@ pub mod domain;
 pub mod infrastructure;
 
 // 便利导出
+pub use application::bom::{
+    BomHeadView, BomLineView, BomRecommendResult, BomService, CreateBomCommand, QueryBomRecommend,
+    QueryBoms,
+};
 pub use application::material::{
     CreateMaterialCommand, MaterialService, MaterialView, QueryMaterials, UpdateMaterialCommand,
 };
@@ -25,8 +29,9 @@ pub use application::party::{
     CreateCustomerCommand, CreateSupplierCommand, CustomerView, PartyService, QueryCustomers,
     QuerySuppliers, SupplierView, UpdateCustomerCommand, UpdateSupplierCommand,
 };
-pub use application::bom::{
-    BomHeadView, BomLineView, BomService, CreateBomCommand, QueryBoms,
+pub use application::recovery_tpl::{
+    CreateRecoveryTplCommand, QueryRecoveryTpls, RecoveryTplHeadView, RecoveryTplLineView,
+    RecoveryTplService,
 };
 pub use application::route::{
     CreateRouteCommand, QueryRoutes, RouteHeadView, RouteService, RouteStepView,

@@ -12,7 +12,10 @@ use crate::application::{
 
 #[async_trait]
 pub trait WarehouseRepository: Send + Sync {
-    async fn create_warehouse(&self, cmd: &CreateWarehouseCommand) -> Result<WarehouseView, AppError>;
+    async fn create_warehouse(
+        &self,
+        cmd: &CreateWarehouseCommand,
+    ) -> Result<WarehouseView, AppError>;
     async fn update_warehouse(
         &self,
         id: i64,
@@ -109,10 +112,7 @@ impl WarehouseRepository for PgWarehouseRepository {
         Ok(row_to_warehouse(row))
     }
 
-    async fn list_warehouses(
-        &self,
-        q: &QueryWarehouses,
-    ) -> Result<Vec<WarehouseView>, AppError> {
+    async fn list_warehouses(&self, q: &QueryWarehouses) -> Result<Vec<WarehouseView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select id, wh_code, wh_name, wh_type, is_active, remark,
@@ -136,10 +136,7 @@ impl WarehouseRepository for PgWarehouseRepository {
         Ok(rows.into_iter().map(row_to_warehouse).collect())
     }
 
-    async fn create_location(
-        &self,
-        cmd: &CreateLocationCommand,
-    ) -> Result<LocationView, AppError> {
+    async fn create_location(&self, cmd: &CreateLocationCommand) -> Result<LocationView, AppError> {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into mdm.mdm_location (wh_id, loc_code, loc_name, loc_type, remark)
@@ -204,10 +201,7 @@ impl WarehouseRepository for PgWarehouseRepository {
         Ok(row_to_location(row))
     }
 
-    async fn list_locations(
-        &self,
-        q: &QueryLocations,
-    ) -> Result<Vec<LocationView>, AppError> {
+    async fn list_locations(&self, q: &QueryLocations) -> Result<Vec<LocationView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select l.id, l.wh_id, w.wh_code, l.loc_code, l.loc_name,

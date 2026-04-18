@@ -15,8 +15,7 @@ use axum::{
 
 use cuba_bootstrap::AppState;
 use cuba_preissue::{
-    CreatePreissueCommand, PreissueHeadView, PreissueService, QueryPreissues,
-    SubmitPreissueResult,
+    CreatePreissueCommand, PreissueHeadView, PreissueService, QueryPreissues, SubmitPreissueResult,
 };
 use cuba_shared::{audit::AuditContext, error::AppError};
 
@@ -35,7 +34,11 @@ async fn list(
     Query(q): Query<QueryPreissues>,
 ) -> Result<AppJson<Vec<PreissueHeadView>>, AppError> {
     ctx.require_permission("preissue.view")?;
-    Ok(AppJson(PreissueService::new(state.db_read().clone()).list(&ctx, &q).await?))
+    Ok(AppJson(
+        PreissueService::new(state.db_read().clone())
+            .list(&ctx, &q)
+            .await?,
+    ))
 }
 
 async fn detail(
@@ -44,7 +47,11 @@ async fn detail(
     Path(id): Path<i64>,
 ) -> Result<AppJson<PreissueHeadView>, AppError> {
     ctx.require_permission("preissue.view")?;
-    Ok(AppJson(PreissueService::new(state.db_read().clone()).get(&ctx, id).await?))
+    Ok(AppJson(
+        PreissueService::new(state.db_read().clone())
+            .get(&ctx, id)
+            .await?,
+    ))
 }
 
 async fn create(
@@ -66,6 +73,8 @@ async fn void(
     Path(id): Path<i64>,
 ) -> Result<AppJson<()>, AppError> {
     ctx.require_permission("preissue.close")?;
-    PreissueService::new(state.db().clone()).void(&ctx, id).await?;
+    PreissueService::new(state.db().clone())
+        .void(&ctx, id)
+        .await?;
     Ok(AppJson(()))
 }

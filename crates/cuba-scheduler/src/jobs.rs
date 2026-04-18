@@ -64,13 +64,10 @@ pub async fn dormant_refresh(pool: PgPool) -> anyhow::Result<serde_json::Value> 
 }
 
 /// 审计日志归档:把 N 天前的数据从 `sys.sys_audit_log` 搬到 `sys.sys_audit_log_archive`
-pub async fn audit_log_archive(
-    pool: PgPool,
-    days: i64,
-) -> anyhow::Result<serde_json::Value> {
+pub async fn audit_log_archive(pool: PgPool, days: i64) -> anyhow::Result<serde_json::Value> {
     let mut tx = pool.begin().await?;
 
-    let moved: i64 = sqlx::query_scalar(
+    let moved: i64 = sqlx::query_scalar::<_, i32>(
         r#"
         with moved as (
             delete from sys.sys_audit_log

@@ -161,7 +161,9 @@ pub struct MaterialService {
 impl MaterialService {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { repo: Arc::new(PgMaterialRepository::new(pool)) }
+        Self {
+            repo: Arc::new(PgMaterialRepository::new(pool)),
+        }
     }
 
     #[must_use]
@@ -174,7 +176,8 @@ impl MaterialService {
         _ctx: &AuditContext,
         cmd: CreateMaterialCommand,
     ) -> Result<MaterialView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_category(&cmd.material_category) {
             return Err(CatalogError::invalid_category(&cmd.material_category));
         }
@@ -192,7 +195,8 @@ impl MaterialService {
         id: i64,
         cmd: UpdateMaterialCommand,
     ) -> Result<MaterialView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if !is_valid_category(&cmd.material_category) {
             return Err(CatalogError::invalid_category(&cmd.material_category));
         }

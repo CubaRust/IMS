@@ -34,7 +34,10 @@ impl PgMaterialRepository {
 #[async_trait]
 impl MaterialRepository for PgMaterialRepository {
     async fn create(&self, cmd: &CreateMaterialCommand) -> Result<MaterialView, AppError> {
-        let extra = cmd.extra_attrs.clone().unwrap_or_else(|| serde_json::json!({}));
+        let extra = cmd
+            .extra_attrs
+            .clone()
+            .unwrap_or_else(|| serde_json::json!({}));
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into mdm.mdm_material
@@ -79,12 +82,11 @@ impl MaterialRepository for PgMaterialRepository {
         self.get(id).await
     }
 
-    async fn update(
-        &self,
-        id: i64,
-        cmd: &UpdateMaterialCommand,
-    ) -> Result<MaterialView, AppError> {
-        let extra = cmd.extra_attrs.clone().unwrap_or_else(|| serde_json::json!({}));
+    async fn update(&self, id: i64, cmd: &UpdateMaterialCommand) -> Result<MaterialView, AppError> {
+        let extra = cmd
+            .extra_attrs
+            .clone()
+            .unwrap_or_else(|| serde_json::json!({}));
         let rows = sqlx::query(
             r#"
             update mdm.mdm_material set
@@ -158,7 +160,11 @@ impl MaterialRepository for PgMaterialRepository {
     }
 
     async fn list(&self, q: &QueryMaterials) -> Result<PageResponse<MaterialView>, AppError> {
-        let page = PageQuery { page: q.page, size: q.size }.normalize();
+        let page = PageQuery {
+            page: q.page,
+            size: q.size,
+        }
+        .normalize();
 
         // count
         let total = {

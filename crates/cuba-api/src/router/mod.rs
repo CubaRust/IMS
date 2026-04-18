@@ -68,7 +68,10 @@ pub fn build_router(state: AppState) -> Router {
         .layer(axum_mw::from_fn(trace_id))
         .layer(axum_mw::from_fn(http_metrics))
         .layer(TraceLayer::new_for_http())
-        .layer(TimeoutLayer::new(std::time::Duration::from_secs(30)))
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            std::time::Duration::from_secs(30),
+        ))
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive()) // TODO: prod 改白名单
         .with_state(state)

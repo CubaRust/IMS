@@ -19,4 +19,4 @@
 pub mod jobs;
 pub mod runtime;
 
-pub use runtime::{SchedulerConfig, SchedulerHandle, start};
+pub use runtime::{start, SchedulerConfig, SchedulerHandle};

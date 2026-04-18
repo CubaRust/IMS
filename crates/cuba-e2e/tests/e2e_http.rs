@@ -87,18 +87,16 @@ async fn http_create_and_submit_inbound_moves_balance() {
         .to_string();
 
     // 取 RAW01 仓的 id
-    let wh_id: i64 =
-        sqlx::query_scalar("select id from mdm.mdm_warehouse where wh_code='RAW01'")
+    let wh_id: i64 = sqlx::query_scalar("select id from mdm.mdm_warehouse where wh_code='RAW01'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let loc_id: i64 =
+        sqlx::query_scalar("select id from mdm.mdm_location where wh_id = $1 order by id limit 1")
+            .bind(wh_id)
             .fetch_one(&pool)
             .await
             .unwrap();
-    let loc_id: i64 = sqlx::query_scalar(
-        "select id from mdm.mdm_location where wh_id = $1 order by id limit 1",
-    )
-    .bind(wh_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
 
     // 建入库单
     let create: Value = client

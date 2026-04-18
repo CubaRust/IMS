@@ -15,12 +15,8 @@ use axum::{
 };
 use uuid::Uuid;
 
-use cuba_shared::{
-    audit::AuditContext,
-    auth::jwt,
-    error::AppError,
-};
 use cuba_bootstrap::AppState;
+use cuba_shared::{audit::AuditContext, auth::jwt, error::AppError};
 
 const TRACE_HEADER: &str = "X-Trace-Id";
 
@@ -65,8 +61,7 @@ pub async fn auth_guard(
         .and_then(|s| s.strip_prefix("Bearer "))
         .ok_or(AppError::Unauthenticated)?;
 
-    let claims =
-        jwt::decode_token(token, state.config().jwt_secret.as_bytes())?;
+    let claims = jwt::decode_token(token, state.config().jwt_secret.as_bytes())?;
     let user_id = claims.user_id().ok_or(AppError::Unauthenticated)?;
 
     // 查 jti 黑名单(logout / refresh / force_logout 会写)
@@ -103,7 +98,11 @@ pub async fn auth_guard(
             .map(ToString::to_string),
         permissions: claims.permissions,
         roles: claims.roles,
-        jti: if claims.jti.is_empty() { None } else { Some(claims.jti) },
+        jti: if claims.jti.is_empty() {
+            None
+        } else {
+            Some(claims.jti)
+        },
         jwt_exp: Some(claims.exp),
     };
 
@@ -174,11 +173,7 @@ pub async fn http_metrics(req: Request<Body>, next: Next) -> Response {
 /// ```ignore
 /// .layer(axum_mw::from_fn_with_state(state.clone(), audit_log))
 /// ```
-pub async fn audit_log(
-    State(state): State<AppState>,
-    req: Request<Body>,
-    next: Next,
-) -> Response {
+pub async fn audit_log(State(state): State<AppState>, req: Request<Body>, next: Next) -> Response {
     let method = req.method().to_string();
     let path = req.uri().path().to_string();
     let trace_id = req

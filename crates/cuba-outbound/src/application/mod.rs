@@ -8,18 +8,14 @@ use sqlx::PgPool;
 use time::{Date, PrimitiveDateTime};
 use validator::Validate;
 
-use cuba_inventory::{
-    CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput,
-};
+use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput};
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
     types::{DocStatus, IoFlag, StockStatus, TxnType},
 };
 
-use crate::domain::{
-    is_valid_outbound_type, requires_work_order, scene_code_for, OutboundError,
-};
+use crate::domain::{is_valid_outbound_type, requires_work_order, scene_code_for, OutboundError};
 use crate::infrastructure::repository::{OutboundRepository, PgOutboundRepository};
 
 // -- View --------------------------------------------------------------------
@@ -169,7 +165,8 @@ impl OutboundService {
             return Err(OutboundError::workorder_required());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.actual_qty <= Decimal::ZERO {
                 return Err(AppError::validation("实发数量必须 > 0"));
             }
@@ -186,7 +183,10 @@ impl OutboundService {
         let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
-            return Err(OutboundError::invalid_transition(&head.doc_status, "submit"));
+            return Err(OutboundError::invalid_transition(
+                &head.doc_status,
+                "submit",
+            ));
         }
 
         let scene = scene_code_for(&head.outbound_type);
@@ -269,11 +269,7 @@ impl OutboundService {
             .await
     }
 
-    pub async fn get(
-        &self,
-        ctx: &AuditContext,
-        id: i64,
-    ) -> Result<OutboundHeadView, AppError> {
+    pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<OutboundHeadView, AppError> {
         self.repo.get(ctx.tenant_id, id).await
     }
 

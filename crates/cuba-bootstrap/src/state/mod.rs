@@ -27,7 +27,11 @@ impl AppState {
     #[must_use]
     pub fn new(db: Db, config: AppConfig) -> Self {
         Self {
-            inner: Arc::new(Inner { db, db_read: None, config }),
+            inner: Arc::new(Inner {
+                db,
+                db_read: None,
+                config,
+            }),
         }
     }
 
@@ -35,7 +39,11 @@ impl AppState {
     #[must_use]
     pub fn new_with_read(db: Db, db_read: Option<Db>, config: AppConfig) -> Self {
         Self {
-            inner: Arc::new(Inner { db, db_read, config }),
+            inner: Arc::new(Inner {
+                db,
+                db_read,
+                config,
+            }),
         }
     }
 

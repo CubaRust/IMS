@@ -1,5 +1,3 @@
-//! 统一 Result 类型与成功响应信封
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
@@ -39,5 +37,22 @@ impl<T> ApiSuccess<T> {
     pub fn with_trace(mut self, trace_id: impl Into<String>) -> Self {
         self.trace_id = Some(trace_id.into());
         self
+    }
+}
+
+// `IntoResponse` 放在类型定义 crate 以满足孤儿规则
+impl<T: Serialize> axum::response::IntoResponse for ApiSuccess<T> {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+        use axum::Json;
+        use serde_json::json;
+
+        let body = json!({
+            "code": self.code,
+            "message": self.message,
+            "data": self.data,
+            "trace_id": self.trace_id,
+        });
+        (StatusCode::OK, Json(body)).into_response()
     }
 }

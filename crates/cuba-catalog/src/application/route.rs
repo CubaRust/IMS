@@ -81,7 +81,9 @@ pub struct RouteService {
 impl RouteService {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { repo: Arc::new(PgRouteRepository::new(pool)) }
+        Self {
+            repo: Arc::new(PgRouteRepository::new(pool)),
+        }
     }
 
     pub async fn create(
@@ -89,14 +91,16 @@ impl RouteService {
         _ctx: &AuditContext,
         cmd: CreateRouteCommand,
     ) -> Result<RouteHeadView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if cmd.steps.is_empty() {
             return Err(CatalogError::route_empty());
         }
         // 步骤号不能重
         let mut seen = std::collections::HashSet::new();
         for s in &cmd.steps {
-            s.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            s.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if !seen.insert(s.step_no) {
                 return Err(CatalogError::duplicate_step(s.step_no));
             }

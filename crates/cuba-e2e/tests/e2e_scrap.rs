@@ -3,9 +3,7 @@
 use cuba_inbound::{CreateInboundCommand, CreateInboundLine, InboundService};
 use cuba_scrap::{CreateScrapCommand, CreateScrapLine, ScrapService};
 use cuba_testkit::{
-    fixtures::{
-        admin_ctx, dec, default_bad_wh_loc, default_scrap_wh_loc, seed_material, today,
-    },
+    fixtures::{admin_ctx, dec, default_bad_wh_loc, default_scrap_wh_loc, seed_material, today},
     TestDb,
 };
 use rust_decimal::Decimal;
@@ -93,13 +91,7 @@ async fn scrap_from_bad_to_scrapped() {
     );
 }
 
-async fn qty(
-    pool: &PgPool,
-    wh_id: i64,
-    loc_id: i64,
-    material_id: i64,
-    status: &str,
-) -> Decimal {
+async fn qty(pool: &PgPool, wh_id: i64, loc_id: i64, material_id: i64, status: &str) -> Decimal {
     sqlx::query_scalar::<_, Decimal>(
         r#"select coalesce(sum(book_qty), 0) from inv.balance
             where wh_id=$1 and loc_id=$2 and material_id=$3 and stock_status=$4"#,

@@ -21,6 +21,7 @@ pub struct LoginResult {
     pub token: String,
     pub expires_at: i64, // unix seconds
     pub user_id: i64,
+    pub user_code: String,
     pub login_name: String,
     pub user_name: String,
     pub roles: Vec<String>,

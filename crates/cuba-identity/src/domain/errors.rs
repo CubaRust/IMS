@@ -38,17 +38,11 @@ impl IdentityError {
 
     #[must_use]
     pub fn weak_password() -> AppError {
-        AppError::business(
-            ID_WEAK_PASSWORD,
-            "密码强度不足:至少 8 位,需含字母和数字",
-        )
+        AppError::business(ID_WEAK_PASSWORD, "密码强度不足:至少 8 位,需含字母和数字")
     }
 
     #[must_use]
     pub fn user_not_found(login_name: &str) -> AppError {
-        AppError::business(
-            ID_USER_NOT_FOUND,
-            format!("用户不存在: {login_name}"),
-        )
+        AppError::business(ID_USER_NOT_FOUND, format!("用户不存在: {login_name}"))
     }
 }

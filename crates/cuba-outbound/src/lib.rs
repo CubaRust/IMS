@@ -17,7 +17,7 @@ pub mod domain;
 pub mod infrastructure;
 
 pub use application::{
-    CreateOutboundCommand, CreateOutboundLine, OutboundHeadView, OutboundLineView,
-    OutboundService, QueryOutbounds, SubmitOutboundResult,
+    CreateOutboundCommand, CreateOutboundLine, OutboundHeadView, OutboundLineView, OutboundService,
+    QueryOutbounds, SubmitOutboundResult,
 };
 pub use infrastructure::repository::{OutboundRepository, PgOutboundRepository};

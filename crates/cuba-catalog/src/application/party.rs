@@ -131,7 +131,9 @@ pub struct PartyService {
 impl PartyService {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { repo: Arc::new(PgPartyRepository::new(pool)) }
+        Self {
+            repo: Arc::new(PgPartyRepository::new(pool)),
+        }
     }
 
     // -- supplier --
@@ -141,7 +143,8 @@ impl PartyService {
         _ctx: &AuditContext,
         cmd: CreateSupplierCommand,
     ) -> Result<SupplierView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         self.repo.create_supplier(&cmd).await
     }
 
@@ -151,7 +154,8 @@ impl PartyService {
         id: i64,
         cmd: UpdateSupplierCommand,
     ) -> Result<SupplierView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         self.repo.update_supplier(id, &cmd).await
     }
 
@@ -159,10 +163,7 @@ impl PartyService {
         self.repo.get_supplier(id).await
     }
 
-    pub async fn list_suppliers(
-        &self,
-        q: &QuerySuppliers,
-    ) -> Result<Vec<SupplierView>, AppError> {
+    pub async fn list_suppliers(&self, q: &QuerySuppliers) -> Result<Vec<SupplierView>, AppError> {
         self.repo.list_suppliers(q).await
     }
 
@@ -173,7 +174,8 @@ impl PartyService {
         _ctx: &AuditContext,
         cmd: CreateCustomerCommand,
     ) -> Result<CustomerView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         self.repo.create_customer(&cmd).await
     }
 
@@ -183,7 +185,8 @@ impl PartyService {
         id: i64,
         cmd: UpdateCustomerCommand,
     ) -> Result<CustomerView, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         self.repo.update_customer(id, &cmd).await
     }
 
@@ -191,10 +194,7 @@ impl PartyService {
         self.repo.get_customer(id).await
     }
 
-    pub async fn list_customers(
-        &self,
-        q: &QueryCustomers,
-    ) -> Result<Vec<CustomerView>, AppError> {
+    pub async fn list_customers(&self, q: &QueryCustomers) -> Result<Vec<CustomerView>, AppError> {
         self.repo.list_customers(q).await
     }
 }

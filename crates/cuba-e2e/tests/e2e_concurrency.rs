@@ -216,13 +216,7 @@ async fn concurrent_outbound_both_fit_both_succeed() {
     assert_eq!(qty(&pool, wh, loc, mat, "QUALIFIED").await, dec("30"));
 }
 
-async fn qty(
-    pool: &PgPool,
-    wh_id: i64,
-    loc_id: i64,
-    material_id: i64,
-    status: &str,
-) -> Decimal {
+async fn qty(pool: &PgPool, wh_id: i64, loc_id: i64, material_id: i64, status: &str) -> Decimal {
     sqlx::query_scalar::<_, Decimal>(
         r#"select coalesce(sum(book_qty), 0) from inv.balance
             where wh_id=$1 and loc_id=$2 and material_id=$3 and stock_status=$4"#,

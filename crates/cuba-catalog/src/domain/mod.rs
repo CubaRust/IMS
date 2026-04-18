@@ -10,6 +10,7 @@ pub const CAT_INVALID_PROCESS_TYPE: ErrorCode = ErrorCode::custom(22102);
 pub const CAT_BOM_EMPTY: ErrorCode = ErrorCode::custom(22103);
 pub const CAT_ROUTE_EMPTY: ErrorCode = ErrorCode::custom(22104);
 pub const CAT_DUPLICATE_STEP: ErrorCode = ErrorCode::custom(22105);
+pub const CAT_RECOVERY_TPL_EMPTY: ErrorCode = ErrorCode::custom(22106);
 
 pub const MATERIAL_CATEGORIES: &[&str] =
     &["RAW", "SEMI", "FINISHED", "PUBLIC", "RECOVERY", "SCRAP"];
@@ -51,9 +52,11 @@ impl CatalogError {
 
     #[must_use]
     pub fn duplicate_step(step_no: i32) -> AppError {
-        AppError::business(
-            CAT_DUPLICATE_STEP,
-            format!("工序步骤号 {step_no} 重复"),
-        )
+        AppError::business(CAT_DUPLICATE_STEP, format!("工序步骤号 {step_no} 重复"))
+    }
+
+    #[must_use]
+    pub fn recovery_tpl_empty() -> AppError {
+        AppError::business(CAT_RECOVERY_TPL_EMPTY, "回收模板行不能为空")
     }
 }

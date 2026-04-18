@@ -50,10 +50,9 @@ impl OutboundRepository for PgOutboundRepository {
     ) -> Result<OutboundHeadView, AppError> {
         let mut tx = self.pool.begin().await?;
 
-        let outbound_no: String =
-            sqlx::query_scalar("select sys.fn_next_doc_no('OUTBOUND')")
-                .fetch_one(&mut *tx)
-                .await?;
+        let outbound_no: String = sqlx::query_scalar("select sys.fn_next_doc_no('OUTBOUND')")
+            .fetch_one(&mut *tx)
+            .await?;
 
         let id: i64 = sqlx::query_scalar(
             r#"

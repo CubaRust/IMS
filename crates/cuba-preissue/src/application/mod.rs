@@ -8,9 +8,7 @@ use sqlx::PgPool;
 use time::{Date, PrimitiveDateTime};
 use validator::Validate;
 
-use cuba_inventory::{
-    CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput,
-};
+use cuba_inventory::{CommitTxnCommand, InventoryService, TxnLineInput, TxnSideInput};
 use cuba_shared::{
     audit::AuditContext,
     error::AppError,
@@ -152,7 +150,8 @@ impl PreissueService {
         ctx: &AuditContext,
         cmd: CreatePreissueCommand,
     ) -> Result<SubmitPreissueResult, AppError> {
-        cmd.validate().map_err(|e| AppError::validation(e.to_string()))?;
+        cmd.validate()
+            .map_err(|e| AppError::validation(e.to_string()))?;
         if cmd.reason.trim().is_empty() {
             return Err(PreissueError::reason_required());
         }
@@ -160,7 +159,8 @@ impl PreissueService {
             return Err(PreissueError::empty_lines());
         }
         for l in &cmd.lines {
-            l.validate().map_err(|e| AppError::validation(e.to_string()))?;
+            l.validate()
+                .map_err(|e| AppError::validation(e.to_string()))?;
             if l.qty <= Decimal::ZERO {
                 return Err(AppError::validation("数量必须 > 0"));
             }
@@ -187,7 +187,12 @@ impl PreissueService {
                         &code.unwrap_or_else(|| format!("id={}", l.material_id)),
                     ));
                 }
-                None => return Err(AppError::not_found(format!("物料 id={} 不存在", l.material_id))),
+                None => {
+                    return Err(AppError::not_found(format!(
+                        "物料 id={} 不存在",
+                        l.material_id
+                    )))
+                }
             }
         }
 
@@ -279,25 +284,23 @@ impl PreissueService {
 
         // 产生一笔 CONVERT:OUT PREISSUE_PENDING → IN QUALIFIED(回正)
         // 注意:inbound 本身已经入正常库存了,这里只是冲销掉 PREISSUE_PENDING 的占位
-        let lines = vec![
-            TxnLineInput {
-                line_no: 1,
-                material_id,
-                batch_no: batch_no.clone(),
-                qty: filled_now,
-                unit: "PCS".into(), // 占位,infra 实际不校验
-                io_flag: IoFlag::In,
-                source_material_id: None,
-                target_material_id: None,
-                stock_status: Some(StockStatus::PreissuePending),
-                status_change_flag: false,
-                location_change_flag: false,
-                item_change_flag: false,
-                recoverable_flag: false,
-                scrap_flag: false,
-                note: Some(format!("preissue 冲销 line={preissue_line_id}")),
-            },
-        ];
+        let lines = vec![TxnLineInput {
+            line_no: 1,
+            material_id,
+            batch_no: batch_no.clone(),
+            qty: filled_now,
+            unit: "PCS".into(), // 占位,infra 实际不校验
+            io_flag: IoFlag::In,
+            source_material_id: None,
+            target_material_id: None,
+            stock_status: Some(StockStatus::PreissuePending),
+            status_change_flag: false,
+            location_change_flag: false,
+            item_change_flag: false,
+            recoverable_flag: false,
+            scrap_flag: false,
+            note: Some(format!("preissue 冲销 line={preissue_line_id}")),
+        }];
         let side = TxnSideInput {
             wh_id,
             loc_id,
@@ -332,11 +335,7 @@ impl PreissueService {
         Ok(())
     }
 
-    pub async fn get(
-        &self,
-        ctx: &AuditContext,
-        id: i64,
-    ) -> Result<PreissueHeadView, AppError> {
+    pub async fn get(&self, ctx: &AuditContext, id: i64) -> Result<PreissueHeadView, AppError> {
         self.repo.get(ctx.tenant_id, id).await
     }
 
@@ -352,7 +351,10 @@ impl PreissueService {
     pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
         let head = self.repo.get(ctx.tenant_id, id).await?;
         if head.exception_status != "PENDING" {
-            return Err(PreissueError::status_mismatch(&head.exception_status, "void"));
+            return Err(PreissueError::status_mismatch(
+                &head.exception_status,
+                "void",
+            ));
         }
         self.repo
             .update_head_status(ctx.tenant_id, id, "VOIDED")

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// JWT Claims
 ///
 /// ## 字段
-/// - `sub` 主题:user_id(字符串化,兼容 JWT 标准)
+/// - `sub` 主题:`user_id`(字符串化,兼容 JWT 标准)
 /// - `login_name` 登录名
 /// - `exp` 过期时间(unix seconds)
 /// - `iat` 签发时间
@@ -85,9 +85,8 @@ pub mod jwt {
     /// 解码并校验
     pub fn decode_token(token: &str, secret: &[u8]) -> Result<Claims, AppError> {
         let validation = Validation::new(Algorithm::HS256);
-        let data: TokenData<Claims> =
-            decode(token, &DecodingKey::from_secret(secret), &validation)
-                .map_err(|_| AppError::Unauthenticated)?;
+        let data: TokenData<Claims> = decode(token, &DecodingKey::from_secret(secret), &validation)
+            .map_err(|_| AppError::Unauthenticated)?;
         Ok(data.claims)
     }
 }

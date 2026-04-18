@@ -11,10 +11,7 @@ pub struct WarehouseError;
 impl WarehouseError {
     #[must_use]
     pub fn invalid_wh_type(v: &str) -> AppError {
-        AppError::business(
-            WH_INVALID_TYPE,
-            format!("未知的仓库类型: {v}"),
-        )
+        AppError::business(WH_INVALID_TYPE, format!("未知的仓库类型: {v}"))
     }
 
     #[must_use]
