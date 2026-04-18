@@ -38,7 +38,28 @@ async fn main() -> anyhow::Result<()> {
     database::run_migrations(&db, &cfg).await.context("迁移失败")?;
 
     // 4. State
-    let state = AppState::new(db, cfg.clone());
+    let state = AppState::new(db.clone(), cfg.clone());
+
+    // 4.5 Scheduler(可由 env SCHEDULER_ENABLED=false 关闭)
+    let scheduler_enabled = std::env::var("SCHEDULER_ENABLED")
+        .map(|v| v != "false" && v != "0")
+        .unwrap_or(true);
+    let scheduler_handle = if scheduler_enabled {
+        let sc_cfg = cuba_scheduler::SchedulerConfig {
+            enabled: true,
+            ..Default::default()
+        };
+        match cuba_scheduler::start(db.clone(), sc_cfg).await {
+            Ok(h) => h,
+            Err(e) => {
+                tracing::warn!(error=%e, "scheduler 启动失败,继续无 scheduler 运行");
+                None
+            }
+        }
+    } else {
+        info!("SCHEDULER_ENABLED=false, 跳过调度器");
+        None
+    };
 
     // 5. Router
     let router = build_router(state);
@@ -57,6 +78,12 @@ async fn main() -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("axum serve 异常退出")?;
+
+    // 停调度器(若有)
+    if let Some(h) = scheduler_handle {
+        h.shutdown().await;
+    }
+
     info!("bye");
     Ok(())
 }

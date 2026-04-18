@@ -12,6 +12,7 @@ path = "src/main.rs"
 cuba-bootstrap = { workspace = true }
 cuba-api = { workspace = true }
 cuba-shared = { workspace = true }
+cuba-scheduler = { workspace = true }
 
 axum = { workspace = true }
 tokio = { workspace = true }
