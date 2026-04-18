@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cuba-ims.fullname" . }}
+  labels:
+    {{- include "cuba-ims.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cuba-ims.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cuba-ims.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: cuba-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.httpPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "cuba-ims.fullname" . }}-config
+            - secretRef:
+                name: {{ include "cuba-ims.fullname" . }}-secret
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.live.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.live.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.live.periodSeconds }}
+            failureThreshold: {{ .Values.probes.live.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.ready.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.ready.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.ready.periodSeconds }}
+            failureThreshold: {{ .Values.probes.ready.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

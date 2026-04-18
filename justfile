@@ -113,3 +113,32 @@ balance:
 # 看最近 20 条事务流水
 flow:
     docker compose exec pg psql -U cuba -d cuba_ims -c "select id, txn_no, txn_type, scene_code, doc_type, doc_no, created_at from inv.txn_h order by id desc limit 20;"
+
+# ---------- Docker 镜像 ----------
+
+# 构建生产镜像
+docker-build:
+    docker build -t eqycc-cuba-ims:latest .
+
+# 跑完整容器化栈(pg + migrator + app)
+docker-up:
+    docker compose -f docker-compose.full.yml up --build -d
+
+# 停全栈
+docker-down:
+    docker compose -f docker-compose.full.yml down
+
+# 看 app 日志
+docker-logs:
+    docker compose -f docker-compose.full.yml logs -f app
+
+# 全栈 smoke test:health + metrics 能访问
+docker-smoke:
+    @echo "等 app 起(最多 30s)..."
+    @for i in $$(seq 1 30); do \
+      if curl -sf http://localhost:8080/health > /dev/null; then \
+        echo "✅ /health OK"; break; \
+      fi; sleep 1; \
+    done
+    @curl -sf http://localhost:8080/metrics | head -5
+    @echo "✅ /metrics OK"

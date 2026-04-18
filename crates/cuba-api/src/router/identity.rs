@@ -36,6 +36,8 @@ pub fn protected_routes() -> Router<AppState> {
     Router::new()
         .route("/auth/me", get(me))
         .route("/auth/password", put(change_password))
+        .route("/auth/logout", post(logout))
+        .route("/auth/refresh", post(refresh))
         .route("/users", get(list_users))
         .route("/roles", get(list_roles))
         .route("/permissions", get(list_permissions))
@@ -106,4 +108,35 @@ async fn list_permissions(
     ctx.require_permission("sys.role.manage")?;
     let svc = build_service(&state);
     Ok(AppJson(svc.list_permissions().await?))
+}
+
+async fn logout(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+) -> Result<AppJson<()>, AppError> {
+    let jti = ctx
+        .jti
+        .as_deref()
+        .ok_or_else(|| AppError::validation("JWT 缺少 jti,不能登出"))?;
+    let exp = ctx
+        .jwt_exp
+        .ok_or_else(|| AppError::validation("JWT 缺少 exp"))?;
+    let svc = build_service(&state);
+    svc.logout(&ctx, jti, exp).await?;
+    Ok(AppJson(()))
+}
+
+async fn refresh(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<AuditContext>,
+) -> Result<AppJson<cuba_identity::LoginResult>, AppError> {
+    let jti = ctx
+        .jti
+        .as_deref()
+        .ok_or_else(|| AppError::validation("JWT 缺少 jti,不能刷新"))?;
+    let exp = ctx
+        .jwt_exp
+        .ok_or_else(|| AppError::validation("JWT 缺少 exp"))?;
+    let svc = build_service(&state);
+    Ok(AppJson(svc.refresh(&ctx, jti, exp).await?))
 }

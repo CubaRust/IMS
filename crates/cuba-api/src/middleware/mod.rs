@@ -69,6 +69,22 @@ pub async fn auth_guard(
         jwt::decode_token(token, state.config().jwt_secret.as_bytes())?;
     let user_id = claims.user_id().ok_or(AppError::Unauthenticated)?;
 
+    // 查 jti 黑名单(logout / refresh / force_logout 会写)
+    if !claims.jti.is_empty() {
+        let revoked: Option<i64> =
+            sqlx::query_scalar("select 1 from sys.sys_jwt_revocation where jti = $1 limit 1")
+                .bind(&claims.jti)
+                .fetch_optional(state.db())
+                .await
+                .map_err(|e| {
+                    tracing::warn!(error=%e, "query jwt revocation failed");
+                    AppError::Unauthenticated
+                })?;
+        if revoked.is_some() {
+            return Err(AppError::Unauthenticated);
+        }
+    }
+
     let trace_id = req
         .extensions()
         .get::<TraceId>()
@@ -86,6 +102,8 @@ pub async fn auth_guard(
             .map(ToString::to_string),
         permissions: claims.permissions,
         roles: claims.roles,
+        jti: if claims.jti.is_empty() { None } else { Some(claims.jti) },
+        jwt_exp: Some(claims.exp),
     };
 
     req.extensions_mut().insert(ctx);
@@ -95,6 +113,27 @@ pub async fn auth_guard(
 /// 给调试 404 用的小工具:不属于中间件,暂放这
 pub async fn health() -> (StatusCode, &'static str) {
     (StatusCode::OK, "ok")
+}
+
+/// k8s liveness — 进程是否活着。不查 DB,永远返回 200。
+pub async fn live() -> (StatusCode, &'static str) {
+    (StatusCode::OK, "live")
+}
+
+/// k8s readiness — 是否可接流量。ping 一次 DB。
+///
+/// DB 不可达 → 503,k8s 会把 Pod 从 Service endpoints 摘掉。
+pub async fn ready(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    match sqlx::query_scalar::<_, i64>("select 1")
+        .fetch_one(state.db())
+        .await
+    {
+        Ok(_) => (StatusCode::OK, "ready"),
+        Err(e) => {
+            tracing::warn!(error = %e, "readiness probe failed");
+            (StatusCode::SERVICE_UNAVAILABLE, "not-ready")
+        }
+    }
 }
 
 /// `/metrics` — Prometheus 指标导出

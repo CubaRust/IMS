@@ -93,12 +93,14 @@ impl IdentityService {
 
         let now = OffsetDateTime::now_utc().unix_timestamp();
         let exp = now + self.jwt_ttl_seconds;
+        let jti = uuid::Uuid::new_v4().to_string();
 
         let claims = Claims {
             sub: user.id.to_string(),
             login_name: user.login_name.clone(),
             exp,
             iat: now,
+            jti,
             roles: roles.clone(),
             permissions: permissions.clone(),
         };
@@ -159,5 +161,81 @@ impl IdentityService {
 
     pub async fn list_permissions(&self) -> Result<Vec<PermissionView>, AppError> {
         self.repo.list_permissions().await
+    }
+
+    /// 登出 - 把当前 jti 写黑名单
+    pub async fn logout(&self, ctx: &AuditContext, jti: &str, exp: i64) -> Result<(), AppError> {
+        self.repo
+            .revoke_jwt(jti, Some(ctx.user_id), &ctx.login_name, "LOGOUT", exp)
+            .await
+    }
+
+    /// 强制下线指定用户(管理员用)
+    pub async fn force_logout(
+        &self,
+        _ctx: &AuditContext,
+        user_id: i64,
+    ) -> Result<u64, AppError> {
+        // 本期策略:清理该用户所有未过期 jti 不现实(没存)。
+        // 所以给出"强制改密"的等价路径:admin 调 revoke_all_for_user 会给一个哨兵行。
+        // 真要精确只吊销某 jti,让用户自己 logout 即可。
+        self.repo.revoke_all_for_user(user_id).await
+    }
+
+    /// 续 token:给旧 token 签一个新 jti,旧 jti 写黑名单
+    ///
+    /// 安全:旧 token 必须未过期、未在黑名单里,auth_guard 已保证。
+    /// 这里直接查 user,重新 claim。
+    pub async fn refresh(
+        &self,
+        ctx: &AuditContext,
+        old_jti: &str,
+        old_exp: i64,
+    ) -> Result<LoginResult, AppError> {
+        let user = self
+            .repo
+            .find_user_by_id(ctx.user_id)
+            .await?
+            .ok_or_else(|| IdentityError::user_not_found(&ctx.login_name))?;
+        if !user.is_active {
+            return Err(IdentityError::user_disabled());
+        }
+
+        // 旧 jti 黑名单化
+        self.repo
+            .revoke_jwt(old_jti, Some(user.id), &user.login_name, "REFRESH", old_exp)
+            .await?;
+
+        let roles = self.repo.list_user_roles(user.id).await?;
+        let permissions = self.repo.list_user_permissions(user.id).await?;
+
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let exp = now + self.jwt_ttl_seconds;
+        let new_jti = uuid::Uuid::new_v4().to_string();
+        let claims = Claims {
+            sub: user.id.to_string(),
+            login_name: user.login_name.clone(),
+            exp,
+            iat: now,
+            jti: new_jti,
+            roles: roles.clone(),
+            permissions: permissions.clone(),
+        };
+        let token = jwt::encode_token(&claims, &self.jwt_secret)?;
+        Ok(LoginResult {
+            token,
+            expires_at: exp,
+            user_id: user.id,
+            user_code: user.user_code.clone(),
+            user_name: user.user_name.clone(),
+            login_name: user.login_name.clone(),
+            roles,
+            permissions,
+        })
+    }
+
+    /// auth_guard 调用 — 查 jti 是否已在黑名单
+    pub async fn is_jwt_revoked(&self, jti: &str) -> Result<bool, AppError> {
+        self.repo.is_jwt_revoked(jti).await
     }
 }

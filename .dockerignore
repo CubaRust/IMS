@@ -1,0 +1,14 @@
+target/
+**/target/
+.git/
+.github/
+docs/
+*.md
+!Cargo.toml
+!Cargo.lock
+!migrations/
+node_modules/
+.idea/
+.vscode/
+.DS_Store
+scripts/seed-data/

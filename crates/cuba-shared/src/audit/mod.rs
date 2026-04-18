@@ -26,6 +26,12 @@ pub struct AuditContext {
     /// 用户所属角色码
     #[serde(default)]
     pub roles: Vec<String>,
+    /// 当前 JWT 的 jti(logout/refresh 用)
+    #[serde(default)]
+    pub jti: Option<String>,
+    /// 当前 JWT 的 exp(unix seconds)
+    #[serde(default)]
+    pub jwt_exp: Option<i64>,
 }
 
 impl AuditContext {
@@ -40,6 +46,8 @@ impl AuditContext {
             user_agent: None,
             permissions: vec!["*".to_string()],
             roles: vec!["SYSTEM".to_string()],
+            jti: None,
+            jwt_exp: None,
         }
     }
 

@@ -24,3 +24,8 @@ validator = { workspace = true }
 
 [dev-dependencies]
 cuba-testkit = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "rules_bench"
+harness = false

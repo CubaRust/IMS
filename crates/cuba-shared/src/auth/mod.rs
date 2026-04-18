@@ -23,6 +23,9 @@ pub struct Claims {
     pub login_name: String,
     pub exp: i64,
     pub iat: i64,
+    /// JWT ID,登出/吊销时按此值写黑名单
+    #[serde(default)]
+    pub jti: String,
     #[serde(default)]
     pub roles: Vec<String>,
     #[serde(default)]

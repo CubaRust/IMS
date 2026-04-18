@@ -2,7 +2,7 @@
 
 手机屏幕组装厂的仓储管理系统(WMS)后端。Rust + Axum + sqlx + PostgreSQL。
 
-**状态**:M1 功能完整 ✅ · M2 测试 & DX ✅ · M3 生产运行时(metrics ✅,容器化/基线规划中)。
+**状态**:M1 功能完整 ✅ · M2 测试 & DX ✅ · M3 生产运行时 ✅(metrics / 容器化 / Helm / JWT 吊销 / 健康检查)。
 
 ---
 

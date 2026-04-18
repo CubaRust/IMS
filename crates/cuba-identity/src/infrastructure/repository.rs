@@ -33,6 +33,18 @@ pub trait IdentityRepository: Send + Sync {
     async fn list_users(&self, q: &QueryUsers) -> Result<Vec<UserView>, AppError>;
     async fn list_roles(&self) -> Result<Vec<RoleView>, AppError>;
     async fn list_permissions(&self) -> Result<Vec<PermissionView>, AppError>;
+
+    // --- JWT 吊销 ---
+    async fn revoke_jwt(
+        &self,
+        jti: &str,
+        user_id: Option<i64>,
+        login_name: &str,
+        reason: &str,
+        exp: i64,
+    ) -> Result<(), AppError>;
+    async fn revoke_all_for_user(&self, user_id: i64) -> Result<u64, AppError>;
+    async fn is_jwt_revoked(&self, jti: &str) -> Result<bool, AppError>;
 }
 
 pub struct PgIdentityRepository {
@@ -225,6 +237,69 @@ impl IdentityRepository for PgIdentityRepository {
                 action_code: r.get("action_code"),
             })
             .collect())
+    }
+
+    // --- JWT 吊销 ---
+
+    async fn revoke_jwt(
+        &self,
+        jti: &str,
+        user_id: Option<i64>,
+        login_name: &str,
+        reason: &str,
+        exp: i64,
+    ) -> Result<(), AppError> {
+        // exp 是 unix seconds,转 Timestamp
+        let exp_dt = time::OffsetDateTime::from_unix_timestamp(exp)
+            .map_err(|e| AppError::validation(format!("exp 不是合法时间戳: {e}")))?;
+        let exp_primitive =
+            time::PrimitiveDateTime::new(exp_dt.date(), exp_dt.time());
+        sqlx::query(
+            r#"
+            insert into sys.sys_jwt_revocation (jti, user_id, login_name, reason, expires_at)
+            values ($1, $2, $3, $4, $5)
+            on conflict (jti) do nothing
+            "#,
+        )
+        .bind(jti)
+        .bind(user_id)
+        .bind(login_name)
+        .bind(reason)
+        .bind(exp_primitive)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn revoke_all_for_user(&self, user_id: i64) -> Result<u64, AppError> {
+        // 本期简化:插入一条 "哨兵" 广播行,auth_guard 扩展时可按 user_id + iat 做失效判定
+        // 目前 auth_guard 只查 jti,所以这里暂时**只记录**,不强制下线(下次可以加 iat 比较)。
+        let rows = sqlx::query(
+            r#"
+            insert into sys.sys_jwt_revocation
+                (jti, user_id, login_name, reason, expires_at)
+            values ($1, $2,
+                (select login_name from sys.sys_user where id = $2),
+                'FORCE_LOGOUT',
+                now() + interval '30 days')
+            "#,
+        )
+        .bind(format!("force-{user_id}-{}", uuid::Uuid::new_v4()))
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(rows)
+    }
+
+    async fn is_jwt_revoked(&self, jti: &str) -> Result<bool, AppError> {
+        let cnt: Option<i64> = sqlx::query_scalar(
+            "select 1 from sys.sys_jwt_revocation where jti = $1 limit 1",
+        )
+        .bind(jti)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(cnt.is_some())
     }
 }
 

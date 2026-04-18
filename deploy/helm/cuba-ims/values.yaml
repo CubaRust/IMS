@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------
+# cuba-ims Helm values
+# ---------------------------------------------------------------------
+
+image:
+  repository: eqycc/cuba-ims
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+# ---- 配置(环境变量) ----
+config:
+  appEnv: prod
+  httpHost: "0.0.0.0"
+  httpPort: 8080
+  databaseMaxConnections: "20"
+  jwtTtlSeconds: "86400"
+  migrationMode: manual
+  rustLog: "info,cuba_=info"
+
+# ---- 敏感信息 ----
+# 生产环境应改用 ExternalSecret / sealed-secrets / vault
+# 这里仅用于 dev / CI smoke
+secrets:
+  databaseUrl: "postgres://cuba:cuba@cuba-pg:5432/cuba_ims"
+  jwtSecret: "CHANGE-ME-in-prod-at-least-32-chars-xxxxxxxxxxx"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# ---- 健康检查(用 /live /ready) ----
+probes:
+  live:
+    path: /live
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+  ready:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+
+# ---- 资源(按常规业务后端) ----
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# ---- Prometheus 抓取(ServiceMonitor 需 prometheus-operator) ----
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+
+ingress:
+  enabled: false
+  className: nginx
+  host: cuba-ims.example.com
+  tls: false
+
+# ---- 跑一次 Job 做 migration ----
+migrator:
+  enabled: true
+  image: postgres:16
+  # 若 enabled,需要挂 migrations 到 /migrations(本期假设 ConfigMap 提供)

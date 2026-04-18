@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cuba-ims
+description: EQYCC CUBA IMS — Rust WMS 后端
+type: application
+version: 0.1.0
+appVersion: "0.3.0"
+
+maintainers:
+  - name: EQYCC
