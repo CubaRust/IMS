@@ -73,30 +73,210 @@ fn _doc_inbound_create() {}
 #[allow(dead_code)]
 fn _doc_inbound_submit() {}
 
+/// 查询入库单列表
+#[utoipa::path(
+    get,
+    path = "/api/v1/inbounds",
+    tag = "inbound",
+    params(
+        ("inbound_no" = Option<String>, Query, description = "按单号过滤"),
+        ("inbound_type" = Option<String>, Query, description = "按类型过滤"),
+        ("doc_status" = Option<String>, Query, description = "按状态过滤"),
+        ("date_from" = Option<String>, Query, description = "日期起 YYYY-MM-DD"),
+        ("date_to" = Option<String>, Query, description = "日期止 YYYY-MM-DD"),
+    ),
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<Vec<InboundHeadView>>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_inbound_list() {}
+
+/// 查询入库单详情
+#[utoipa::path(
+    get,
+    path = "/api/v1/inbounds/{id}",
+    tag = "inbound",
+    params(("id" = i64, Path, description = "入库单 id")),
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<InboundHeadView>),
+        (status = 200, description = "不存在(code=10404)", body = ApiErrorEnvelope),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_inbound_get() {}
+
+/// 作废入库单(仅 DRAFT/SUBMITTED)
+#[utoipa::path(
+    post,
+    path = "/api/v1/inbounds/{id}/void",
+    tag = "inbound",
+    params(("id" = i64, Path, description = "入库单 id")),
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+        (status = 200, description = "状态非法(code=30103)", body = ApiErrorEnvelope),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_inbound_void() {}
+
+// -- outbound --------------------------------------------------------------
+
+/// 创建出库单
+#[utoipa::path(
+    post,
+    path = "/api/v1/outbounds",
+    tag = "outbound",
+    request_body = OutboundCreateBody,
+    responses(
+        (status = 200, description = "成功,返回单据", body = ApiSuccessEnvelope<OutboundHeadView>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_outbound_create() {}
+
+/// 提交出库单(核心扣库存动作,可能抛 20101 库存不足)
+#[utoipa::path(
+    post,
+    path = "/api/v1/outbounds/{id}/submit",
+    tag = "outbound",
+    params(("id" = i64, Path, description = "出库单 id")),
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<SubmitResult>),
+        (status = 200, description = "库存不足(code=20101)", body = ApiErrorEnvelope),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_outbound_submit() {}
+
+/// 查询出库单列表
+#[utoipa::path(
+    get,
+    path = "/api/v1/outbounds",
+    tag = "outbound",
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<Vec<OutboundHeadView>>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_outbound_list() {}
+
+// -- preissue --------------------------------------------------------------
+
+/// 创建异常先发单(会产生 PREISSUE_PENDING 状态的负库存)
+#[utoipa::path(
+    post,
+    path = "/api/v1/preissues",
+    tag = "preissue",
+    request_body = PreissueCreateBody,
+    responses(
+        (status = 200, description = "成功,负库存已生效", body = ApiSuccessEnvelope<PreissueCreateResult>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_preissue_create() {}
+
+/// 作废异常先发(仅 PENDING/PARTIAL,会回冲负库存)
+#[utoipa::path(
+    post,
+    path = "/api/v1/preissues/{id}/void",
+    tag = "preissue",
+    params(("id" = i64, Path, description = "preissue id")),
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_preissue_void() {}
+
+// -- auth 扩展 -----------------------------------------------------------
+
+/// 当前用户信息
+#[utoipa::path(
+    get,
+    path = "/api/v1/auth/me",
+    tag = "auth",
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<LoginData>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_me() {}
+
+/// 登出(当前 token 拉黑)
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/logout",
+    tag = "auth",
+    responses(
+        (status = 200, description = "成功", body = ApiSuccessEnvelope<()>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_logout() {}
+
+/// 刷新 token(旧 token 立即失效)
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/refresh",
+    tag = "auth",
+    responses(
+        (status = 200, description = "成功,返回新 token", body = ApiSuccessEnvelope<LoginData>),
+    ),
+    security(("bearer" = []))
+)]
+#[allow(dead_code)]
+fn _doc_refresh() {}
+
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "EQYCC CUBA IMS API",
-        version = "0.1.0",
+        version = "0.4.0",
         description = "手机屏幕组装厂 WMS 后端。\n\n\
             约定:\n\
             - 所有业务成功响应返回 `{code:0, message:\"ok\", data:...}`\n\
             - 业务失败走 HTTP 200 + code != 0\n\
             - 仅 401/403/500 使用对应 HTTP status\n\
-            - JWT 走 `Authorization: Bearer <token>`",
+            - JWT 走 `Authorization: Bearer <token>`\n\
+            - 数量字段统一字符串传 Decimal 避免精度丢失",
         contact(name = "EQYCC")
     ),
     servers((url = "/", description = "当前环境")),
     paths(
         _doc_login,
+        _doc_me,
+        _doc_logout,
+        _doc_refresh,
         _doc_balance,
         _doc_inbound_create,
         _doc_inbound_submit,
+        _doc_inbound_list,
+        _doc_inbound_get,
+        _doc_inbound_void,
+        _doc_outbound_create,
+        _doc_outbound_submit,
+        _doc_outbound_list,
+        _doc_preissue_create,
+        _doc_preissue_void,
     ),
     components(schemas(
         LoginBody, LoginData,
         BalanceRow,
-        InboundCreateBody, InboundCreateLine, SubmitResult,
+        InboundCreateBody, InboundCreateLine, SubmitResult, SubmitInboundResult,
+        InboundHeadView, InboundLineView,
+        OutboundCreateBody, OutboundCreateLine, OutboundHeadView,
+        PreissueCreateBody, PreissueCreateLine, PreissueCreateResult,
         ApiErrorEnvelope,
     )),
     modifiers(&SecurityAddon),

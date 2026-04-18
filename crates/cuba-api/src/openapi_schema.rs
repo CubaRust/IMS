@@ -95,3 +95,120 @@ pub struct SubmitResult {
     pub txn_no: String,
     pub doc_status: String,
 }
+
+// -- inbound/outbound 列表视图 --------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct InboundHeadView {
+    pub id: i64,
+    pub inbound_no: String,
+    pub inbound_type: String,
+    pub wh_id: i64,
+    pub loc_id: Option<i64>,
+    #[schema(value_type = String, example = "2026-04-17")]
+    pub inbound_date: String,
+    pub doc_status: String,
+    pub lines: Vec<InboundLineView>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct InboundLineView {
+    pub id: i64,
+    pub line_no: i32,
+    pub material_id: i64,
+    pub batch_no: String,
+    #[schema(value_type = String)]
+    pub qty: String,
+    pub unit: String,
+    pub stock_status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SubmitInboundResult {
+    pub inbound_id: i64,
+    pub inbound_no: String,
+    pub txn_no: String,
+    pub doc_status: String,
+}
+
+// -- outbound --------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OutboundCreateBody {
+    #[schema(example = "PROD_ISSUE")]
+    pub outbound_type: String,
+    pub wh_id: i64,
+    pub loc_id: i64,
+    #[schema(value_type = String, example = "2026-04-17")]
+    pub outbound_date: String,
+    pub work_order_no: Option<String>,
+    pub lines: Vec<OutboundCreateLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OutboundCreateLine {
+    pub line_no: i32,
+    pub material_id: i64,
+    pub batch_no: String,
+    #[schema(value_type = String)]
+    pub suggest_qty: String,
+    #[schema(value_type = String)]
+    pub actual_qty: String,
+    pub unit: String,
+    pub stock_status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OutboundHeadView {
+    pub id: i64,
+    pub outbound_no: String,
+    pub outbound_type: String,
+    pub wh_id: i64,
+    pub loc_id: i64,
+    #[schema(value_type = String, example = "2026-04-17")]
+    pub outbound_date: String,
+    pub doc_status: String,
+}
+
+// -- preissue --------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PreissueCreateBody {
+    pub wh_id: i64,
+    pub loc_id: i64,
+    #[schema(value_type = String, example = "2026-04-17")]
+    pub issue_date: String,
+    pub reason: String,
+    pub work_order_no: Option<String>,
+    #[schema(value_type = String, example = "2026-04-24")]
+    pub expected_close_date: Option<String>,
+    pub lines: Vec<PreissueCreateLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PreissueCreateLine {
+    pub line_no: i32,
+    pub material_id: i64,
+    #[schema(value_type = String)]
+    pub qty: String,
+    pub unit: String,
+    pub expected_batch_no: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PreissueCreateResult {
+    pub preissue_id: i64,
+    pub preissue_no: String,
+    pub txn_no: String,
+    pub exception_status: String,
+}
+
+// -- 通用分页响应 ---------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PageResponse<T> {
+    pub items: Vec<T>,
+    pub total: i64,
+    pub page: i64,
+    pub page_size: i64,
+}
