@@ -18,6 +18,8 @@ pub struct AppState {
 
 struct Inner {
     pub db: Db,
+    /// 读副本池,None 时 db_read() 回落到主库
+    pub db_read: Option<Db>,
     pub config: AppConfig,
 }
 
@@ -25,13 +27,27 @@ impl AppState {
     #[must_use]
     pub fn new(db: Db, config: AppConfig) -> Self {
         Self {
-            inner: Arc::new(Inner { db, config }),
+            inner: Arc::new(Inner { db, db_read: None, config }),
+        }
+    }
+
+    /// 带读副本池的构造(若读副本不可用传 None,行为与 new 相同)
+    #[must_use]
+    pub fn new_with_read(db: Db, db_read: Option<Db>, config: AppConfig) -> Self {
+        Self {
+            inner: Arc::new(Inner { db, db_read, config }),
         }
     }
 
     #[must_use]
     pub fn db(&self) -> &Db {
         &self.inner.db
+    }
+
+    /// 只读查询专用池:有读副本走副本,否则走主库
+    #[must_use]
+    pub fn db_read(&self) -> &Db {
+        self.inner.db_read.as_ref().unwrap_or(&self.inner.db)
     }
 
     #[must_use]

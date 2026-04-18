@@ -33,6 +33,33 @@ pub async fn connect(cfg: &AppConfig) -> Result<Db, AppError> {
     Ok(pool)
 }
 
+/// 建立读副本连接池(若配置了);否则返回 None
+pub async fn connect_read_pool(cfg: &AppConfig) -> Result<Option<Db>, AppError> {
+    let Some(url) = cfg.database_read_url.as_ref() else {
+        return Ok(None);
+    };
+    info!(
+        max_connections = cfg.database_max_connections,
+        "connecting to postgres read replica"
+    );
+    let pool = PgPoolOptions::new()
+        .max_connections(cfg.database_max_connections)
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(url)
+        .await
+        .map_err(|e| {
+            warn!(error=%e, "读副本连接失败,fallback 到主库");
+            AppError::Internal(anyhow::anyhow!("read replica 连接失败: {e}"))
+        })?;
+
+    if sqlx::query("select 1").execute(&pool).await.is_err() {
+        warn!("read replica ping failed, 将 fallback 到主库");
+        return Ok(None);
+    }
+    info!("postgres read replica connected");
+    Ok(Some(pool))
+}
+
 /// 按配置运行 migration
 ///
 /// - `Auto`   : `sqlx::migrate!` 自动跑(dev/test)

@@ -330,6 +330,15 @@ async fn upsert_balance(
     tenant_id: i64,
     d: &StockDelta,
 ) -> Result<(), AppError> {
+    // 先拿 xact-level advisory lock,把同一 locator 的并发排队化
+    // 好处:避免 ON CONFLICT 时页面级锁竞争导致的 wait→retry 抖动
+    // key 计算:hash(tenant_id, material_id, wh_id, loc_id, batch_no, stock_status)
+    let key = locator_lock_key(tenant_id, d);
+    sqlx::query("select pg_advisory_xact_lock($1)")
+        .bind(key)
+        .execute(&mut **tx)
+        .await?;
+
     // 行锁顺序固定:(tenant_id, material_id, wh_id, loc_id, batch_no, stock_status) 升序
     // 注:ON CONFLICT 以老表的 (material_id, wh_id, loc_id, batch_no, stock_status)
     // 为唯一键 + tenant_id 当作普通列。多租户场景下,
@@ -523,4 +532,20 @@ fn row_to_txn_line_view(row: PgRow) -> TxnLineView {
         scrap_flag: row.get("scrap_flag"),
         note: row.get("note"),
     }
+}
+
+/// 为 advisory lock 生成稳定的 i64 key
+///
+/// 注意:两个不同 locator 理论上会 hash 碰撞(概率极低),碰撞后果是并发请求被串行化,
+/// 不影响正确性,只影响吞吐。
+fn locator_lock_key(tenant_id: i64, d: &StockDelta) -> i64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    tenant_id.hash(&mut h);
+    d.locator.material_id.hash(&mut h);
+    d.locator.wh_id.hash(&mut h);
+    d.locator.loc_id.hash(&mut h);
+    d.locator.batch_no.hash(&mut h);
+    d.locator.stock_status.as_str().hash(&mut h);
+    h.finish() as i64
 }

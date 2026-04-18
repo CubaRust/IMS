@@ -1,0 +1,15 @@
+[package]
+name = "cuba-cache"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cuba-shared = { workspace = true }
+cuba-metrics = { workspace = true }
+
+moka = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+async-trait = { workspace = true }

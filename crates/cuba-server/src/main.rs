@@ -37,8 +37,17 @@ async fn main() -> anyhow::Result<()> {
     let db = database::connect(&cfg).await.context("连接数据库失败")?;
     database::run_migrations(&db, &cfg).await.context("迁移失败")?;
 
+    // 3.5 读副本池(可选)
+    let db_read = match database::connect_read_pool(&cfg).await {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::warn!(error=%e, "读副本不可用,所有查询走主库");
+            None
+        }
+    };
+
     // 4. State
-    let state = AppState::new(db.clone(), cfg.clone());
+    let state = AppState::new_with_read(db.clone(), db_read, cfg.clone());
 
     // 4.5 Scheduler(可由 env SCHEDULER_ENABLED=false 关闭)
     let scheduler_enabled = std::env::var("SCHEDULER_ENABLED")

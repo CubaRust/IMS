@@ -71,6 +71,8 @@ pub struct AppConfig {
     pub http_host: String,
     pub http_port: u16,
     pub database_url: String,
+    /// 读副本 URL;None 时读走主库
+    pub database_read_url: Option<String>,
     pub database_max_connections: u32,
     pub jwt_secret: String,
     pub jwt_ttl_seconds: i64,
@@ -109,6 +111,10 @@ impl AppConfig {
             http_host: read_env("HTTP_HOST", "0.0.0.0")?,
             http_port: read_env_parse("HTTP_PORT", 8080)?,
             database_url: read_env("DATABASE_URL", "")?,
+            database_read_url: {
+                let v = read_env("DATABASE_READ_URL", "")?;
+                if v.is_empty() { None } else { Some(v) }
+            },
             database_max_connections: read_env_parse("DATABASE_MAX_CONNECTIONS", 10)?,
             jwt_secret,
             jwt_ttl_seconds: read_env_parse("JWT_TTL_SECONDS", 86400)?,
