@@ -102,7 +102,7 @@ async fn list_outbounds(
     Query(q): Query<QueryOutbounds>,
 ) -> Result<AppJson<Vec<OutboundHeadView>>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(OutboundService::new(state.db().clone()).list(&ctx, &q).await?))
 }
 
 async fn get_outbound(
@@ -111,7 +111,7 @@ async fn get_outbound(
     Path(id): Path<i64>,
 ) -> Result<AppJson<OutboundHeadView>, AppError> {
     ctx.require_permission("outbound.view")?;
-    Ok(AppJson(OutboundService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(OutboundService::new(state.db().clone()).get(&ctx, id).await?))
 }
 
 async fn create_outbound(

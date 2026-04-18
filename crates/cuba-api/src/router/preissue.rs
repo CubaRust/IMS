@@ -35,7 +35,7 @@ async fn list(
     Query(q): Query<QueryPreissues>,
 ) -> Result<AppJson<Vec<PreissueHeadView>>, AppError> {
     ctx.require_permission("preissue.view")?;
-    Ok(AppJson(PreissueService::new(state.db().clone()).list(&q).await?))
+    Ok(AppJson(PreissueService::new(state.db().clone()).list(&ctx, &q).await?))
 }
 
 async fn detail(
@@ -44,7 +44,7 @@ async fn detail(
     Path(id): Path<i64>,
 ) -> Result<AppJson<PreissueHeadView>, AppError> {
     ctx.require_permission("preissue.view")?;
-    Ok(AppJson(PreissueService::new(state.db().clone()).get(id).await?))
+    Ok(AppJson(PreissueService::new(state.db().clone()).get(&ctx, id).await?))
 }
 
 async fn create(

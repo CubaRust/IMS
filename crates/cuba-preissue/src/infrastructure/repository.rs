@@ -19,19 +19,29 @@ pub trait PreissueRepository: Send + Sync {
         cmd: &CreatePreissueCommand,
     ) -> Result<PreissueHeadView, AppError>;
 
-    async fn get(&self, id: i64) -> Result<PreissueHeadView, AppError>;
-    async fn list(&self, q: &QueryPreissues) -> Result<Vec<PreissueHeadView>, AppError>;
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<PreissueHeadView, AppError>;
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryPreissues,
+    ) -> Result<Vec<PreissueHeadView>, AppError>;
 
     /// 冲销一行
     ///
     /// 返回:`(preissue_no, new_line_status, material_id, expected_batch_no)`
     async fn apply_fill(
         &self,
+        tenant_id: i64,
         line_id: i64,
         filled_now: Decimal,
     ) -> Result<(String, String, i64, String), AppError>;
 
-    async fn update_head_status(&self, id: i64, status: &str) -> Result<(), AppError>;
+    async fn update_head_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: &str,
+    ) -> Result<(), AppError>;
 }
 
 pub struct PgPreissueRepository {
@@ -63,14 +73,15 @@ impl PreissueRepository for PgPreissueRepository {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into wms.wms_preissue_h
-                (preissue_no, exception_type, supplier_id,
+                (tenant_id, preissue_no, exception_type, supplier_id,
                  work_order_no, process_name, workshop_name,
                  issue_date, operator_id, reason,
                  exception_status, expected_close_date, remark)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'PENDING',$10,$11)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PENDING',$11,$12)
             returning id
             "#,
         )
+        .bind(ctx.tenant_id)
         .bind(&preissue_no)
         .bind(&exception_type)
         .bind(cmd.supplier_id)
@@ -89,11 +100,12 @@ impl PreissueRepository for PgPreissueRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_preissue_d
-                    (preissue_id, line_no, material_id, qty, filled_qty, unfilled_qty,
+                    (tenant_id, preissue_id, line_no, material_id, qty, filled_qty, unfilled_qty,
                      expected_batch_no, target_desc, line_status, note)
-                values ($1,$2,$3,$4,0,$4,$5,$6,'PENDING',$7)
+                values ($1,$2,$3,$4,$5,0,$5,$6,$7,'PENDING',$8)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -106,10 +118,10 @@ impl PreissueRepository for PgPreissueRepository {
         }
 
         tx.commit().await?;
-        self.get(id).await
+        self.get(ctx.tenant_id, id).await
     }
 
-    async fn get(&self, id: i64) -> Result<PreissueHeadView, AppError> {
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<PreissueHeadView, AppError> {
         let head = sqlx::query(
             r#"
             select h.id, h.preissue_no, h.exception_type,
@@ -120,10 +132,11 @@ impl PreissueRepository for PgPreissueRepository {
                    h.remark, h.created_at, h.updated_at
               from wms.wms_preissue_h h
               left join mdm.mdm_supplier s on s.id = h.supplier_id
-             where h.id = $1
+             where h.id = $1 and h.tenant_id = $2
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::not_found(format!("异常先发 id={id} 不存在")))?;
@@ -136,11 +149,12 @@ impl PreissueRepository for PgPreissueRepository {
                    d.closed_by_inbound_line_id, d.note
               from wms.wms_preissue_d d
               left join mdm.mdm_material m on m.id = d.material_id
-             where d.preissue_id = $1
+             where d.preissue_id = $1 and d.tenant_id = $2
              order by d.line_no
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_all(&self.pool)
         .await?
         .into_iter()
@@ -150,7 +164,11 @@ impl PreissueRepository for PgPreissueRepository {
         Ok(row_to_head(head, lines))
     }
 
-    async fn list(&self, q: &QueryPreissues) -> Result<Vec<PreissueHeadView>, AppError> {
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryPreissues,
+    ) -> Result<Vec<PreissueHeadView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select h.id, h.preissue_no, h.exception_type,
@@ -161,9 +179,10 @@ impl PreissueRepository for PgPreissueRepository {
                    h.remark, h.created_at, h.updated_at
               from wms.wms_preissue_h h
               left join mdm.mdm_supplier s on s.id = h.supplier_id
-             where 1 = 1
+             where h.tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         if let Some(no) = &q.preissue_no {
             qb.push(" and h.preissue_no = ").push_bind(no.clone());
         }
@@ -192,6 +211,7 @@ impl PreissueRepository for PgPreissueRepository {
 
     async fn apply_fill(
         &self,
+        tenant_id: i64,
         line_id: i64,
         filled_now: Decimal,
     ) -> Result<(String, String, i64, String), AppError> {
@@ -205,11 +225,12 @@ impl PreissueRepository for PgPreissueRepository {
                    h.preissue_no
               from wms.wms_preissue_d d
               join wms.wms_preissue_h h on h.id = d.preissue_id
-             where d.id = $1
+             where d.id = $1 and d.tenant_id = $2
              for update of d
             "#,
         )
         .bind(line_id)
+        .bind(tenant_id)
         .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(|| AppError::not_found(format!("preissue_line id={line_id} 不存在")))?;
@@ -236,13 +257,14 @@ impl PreissueRepository for PgPreissueRepository {
             r#"
             update wms.wms_preissue_d
                set filled_qty = $1, unfilled_qty = $2, line_status = $3
-             where id = $4
+             where id = $4 and tenant_id = $5
             "#,
         )
         .bind(new_filled)
         .bind(new_unfilled)
         .bind(new_line_status)
         .bind(line_id)
+        .bind(tenant_id)
         .execute(&mut *tx)
         .await?;
 
@@ -254,18 +276,22 @@ impl PreissueRepository for PgPreissueRepository {
                 sum(case when line_status = 'CLOSED'  then 1 else 0 end)::bigint,
                 sum(case when line_status = 'PENDING' then 1 else 0 end)::bigint
               from wms.wms_preissue_d
-             where preissue_id = $1
+             where preissue_id = $1 and tenant_id = $2
             "#,
         )
         .bind(preissue_id)
+        .bind(tenant_id)
         .fetch_one(&mut *tx)
         .await?;
 
         let (closed_cnt, pending_cnt) = agg;
-        let total: i64 = sqlx::query_scalar("select count(*) from wms.wms_preissue_d where preissue_id = $1")
-            .bind(preissue_id)
-            .fetch_one(&mut *tx)
-            .await?;
+        let total: i64 = sqlx::query_scalar(
+            "select count(*) from wms.wms_preissue_d where preissue_id = $1 and tenant_id = $2",
+        )
+        .bind(preissue_id)
+        .bind(tenant_id)
+        .fetch_one(&mut *tx)
+        .await?;
 
         let new_head_status = if closed_cnt == total {
             "CLOSED"
@@ -276,10 +302,11 @@ impl PreissueRepository for PgPreissueRepository {
         };
 
         sqlx::query(
-            "update wms.wms_preissue_h set exception_status = $1 where id = $2",
+            "update wms.wms_preissue_h set exception_status = $1 where id = $2 and tenant_id = $3",
         )
         .bind(new_head_status)
         .bind(preissue_id)
+        .bind(tenant_id)
         .execute(&mut *tx)
         .await?;
 
@@ -291,12 +318,18 @@ impl PreissueRepository for PgPreissueRepository {
         Ok((preissue_no, new_line_status.to_string(), material_id, batch_no))
     }
 
-    async fn update_head_status(&self, id: i64, status: &str) -> Result<(), AppError> {
+    async fn update_head_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: &str,
+    ) -> Result<(), AppError> {
         sqlx::query(
-            "update wms.wms_preissue_h set exception_status = $1 where id = $2",
+            "update wms.wms_preissue_h set exception_status = $1 where id = $2 and tenant_id = $3",
         )
         .bind(status)
         .bind(id)
+        .bind(tenant_id)
         .execute(&self.pool)
         .await?;
         Ok(())

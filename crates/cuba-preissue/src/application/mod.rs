@@ -274,7 +274,7 @@ impl PreissueService {
         // repo 里在事务里更新 filled/unfilled + line_status + head status
         let (preissue_no, line_status, material_id, batch_no) = self
             .repo
-            .apply_fill(preissue_line_id, filled_now)
+            .apply_fill(ctx.tenant_id, preissue_line_id, filled_now)
             .await?;
 
         // 产生一笔 CONVERT:OUT PREISSUE_PENDING → IN QUALIFIED(回正)
@@ -332,20 +332,30 @@ impl PreissueService {
         Ok(())
     }
 
-    pub async fn get(&self, id: i64) -> Result<PreissueHeadView, AppError> {
-        self.repo.get(id).await
+    pub async fn get(
+        &self,
+        ctx: &AuditContext,
+        id: i64,
+    ) -> Result<PreissueHeadView, AppError> {
+        self.repo.get(ctx.tenant_id, id).await
     }
 
-    pub async fn list(&self, q: &QueryPreissues) -> Result<Vec<PreissueHeadView>, AppError> {
-        self.repo.list(q).await
+    pub async fn list(
+        &self,
+        ctx: &AuditContext,
+        q: &QueryPreissues,
+    ) -> Result<Vec<PreissueHeadView>, AppError> {
+        self.repo.list(ctx.tenant_id, q).await
     }
 
     /// 作废(仅 PENDING 状态)
-    pub async fn void(&self, _ctx: &AuditContext, id: i64) -> Result<(), AppError> {
-        let head = self.repo.get(id).await?;
+    pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         if head.exception_status != "PENDING" {
             return Err(PreissueError::status_mismatch(&head.exception_status, "void"));
         }
-        self.repo.update_head_status(id, "VOIDED").await
+        self.repo
+            .update_head_status(ctx.tenant_id, id, "VOIDED")
+            .await
     }
 }

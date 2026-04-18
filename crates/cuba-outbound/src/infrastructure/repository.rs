@@ -16,9 +16,18 @@ pub trait OutboundRepository: Send + Sync {
         ctx: &AuditContext,
         cmd: &CreateOutboundCommand,
     ) -> Result<OutboundHeadView, AppError>;
-    async fn get(&self, id: i64) -> Result<OutboundHeadView, AppError>;
-    async fn list(&self, q: &QueryOutbounds) -> Result<Vec<OutboundHeadView>, AppError>;
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError>;
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<OutboundHeadView, AppError>;
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryOutbounds,
+    ) -> Result<Vec<OutboundHeadView>, AppError>;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError>;
 }
 
 pub struct PgOutboundRepository {
@@ -49,14 +58,15 @@ impl OutboundRepository for PgOutboundRepository {
         let id: i64 = sqlx::query_scalar(
             r#"
             insert into wms.wms_outbound_h
-                (outbound_no, outbound_type,
+                (tenant_id, outbound_no, outbound_type,
                  target_object_type, target_object_id,
                  work_order_no, process_name, route_id, workshop_name,
                  wh_id, loc_id, outbound_date, operator_id, doc_status, remark)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'DRAFT',$13)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'DRAFT',$14)
             returning id
             "#,
         )
+        .bind(ctx.tenant_id)
         .bind(&outbound_no)
         .bind(&cmd.outbound_type)
         .bind(&cmd.target_object_type)
@@ -77,12 +87,13 @@ impl OutboundRepository for PgOutboundRepository {
             sqlx::query(
                 r#"
                 insert into wms.wms_outbound_d
-                    (outbound_id, line_no, material_id, batch_no,
+                    (tenant_id, outbound_id, line_no, material_id, batch_no,
                      suggest_qty, actual_qty, unit, stock_status,
                      bom_recommended_flag, public_material_flag, preissue_flag, note)
-                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
                 "#,
             )
+            .bind(ctx.tenant_id)
             .bind(id)
             .bind(l.line_no)
             .bind(l.material_id)
@@ -100,10 +111,10 @@ impl OutboundRepository for PgOutboundRepository {
         }
 
         tx.commit().await?;
-        self.get(id).await
+        self.get(ctx.tenant_id, id).await
     }
 
-    async fn get(&self, id: i64) -> Result<OutboundHeadView, AppError> {
+    async fn get(&self, tenant_id: i64, id: i64) -> Result<OutboundHeadView, AppError> {
         let head = sqlx::query(
             r#"
             select h.id, h.outbound_no, h.outbound_type,
@@ -115,10 +126,11 @@ impl OutboundRepository for PgOutboundRepository {
               from wms.wms_outbound_h h
               left join mdm.mdm_warehouse w on w.id = h.wh_id
               left join mdm.mdm_location  l on l.id = h.loc_id
-             where h.id = $1
+             where h.id = $1 and h.tenant_id = $2
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::not_found(format!("出库单 id={id} 不存在")))?;
@@ -130,11 +142,12 @@ impl OutboundRepository for PgOutboundRepository {
                    d.bom_recommended_flag, d.public_material_flag, d.preissue_flag, d.note
               from wms.wms_outbound_d d
               left join mdm.mdm_material m on m.id = d.material_id
-             where d.outbound_id = $1
+             where d.outbound_id = $1 and d.tenant_id = $2
              order by d.line_no
             "#,
         )
         .bind(id)
+        .bind(tenant_id)
         .fetch_all(&self.pool)
         .await?
         .into_iter()
@@ -144,7 +157,11 @@ impl OutboundRepository for PgOutboundRepository {
         Ok(row_to_head(head, lines))
     }
 
-    async fn list(&self, q: &QueryOutbounds) -> Result<Vec<OutboundHeadView>, AppError> {
+    async fn list(
+        &self,
+        tenant_id: i64,
+        q: &QueryOutbounds,
+    ) -> Result<Vec<OutboundHeadView>, AppError> {
         let mut qb = sqlx::QueryBuilder::<Postgres>::new(
             r#"
             select h.id, h.outbound_no, h.outbound_type,
@@ -156,9 +173,10 @@ impl OutboundRepository for PgOutboundRepository {
               from wms.wms_outbound_h h
               left join mdm.mdm_warehouse w on w.id = h.wh_id
               left join mdm.mdm_location  l on l.id = h.loc_id
-             where 1 = 1
+             where h.tenant_id =
             "#,
         );
+        qb.push_bind(tenant_id);
         if let Some(no) = &q.outbound_no {
             qb.push(" and h.outbound_no = ").push_bind(no.clone());
         }
@@ -182,12 +200,20 @@ impl OutboundRepository for PgOutboundRepository {
         Ok(rows.into_iter().map(|r| row_to_head(r, vec![])).collect())
     }
 
-    async fn update_status(&self, id: i64, status: DocStatus) -> Result<(), AppError> {
-        sqlx::query("update wms.wms_outbound_h set doc_status = $1 where id = $2")
-            .bind(status.as_str())
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+    async fn update_status(
+        &self,
+        tenant_id: i64,
+        id: i64,
+        status: DocStatus,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            "update wms.wms_outbound_h set doc_status = $1 where id = $2 and tenant_id = $3",
+        )
+        .bind(status.as_str())
+        .bind(id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 }

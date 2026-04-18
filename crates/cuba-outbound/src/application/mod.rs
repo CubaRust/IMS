@@ -183,7 +183,7 @@ impl OutboundService {
         ctx: &AuditContext,
         id: i64,
     ) -> Result<SubmitOutboundResult, AppError> {
-        let head = self.repo.get(id).await?;
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !matches!(status, DocStatus::Draft | DocStatus::Submitted) {
             return Err(OutboundError::invalid_transition(&head.doc_status, "submit"));
@@ -247,7 +247,7 @@ impl OutboundService {
         let committed = self.inventory.commit(ctx, cmd).await?;
 
         self.repo
-            .update_status(head.id, DocStatus::Completed)
+            .update_status(ctx.tenant_id, head.id, DocStatus::Completed)
             .await?;
 
         Ok(SubmitOutboundResult {
@@ -258,20 +258,30 @@ impl OutboundService {
         })
     }
 
-    pub async fn void(&self, _ctx: &AuditContext, id: i64) -> Result<(), AppError> {
-        let head = self.repo.get(id).await?;
+    pub async fn void(&self, ctx: &AuditContext, id: i64) -> Result<(), AppError> {
+        let head = self.repo.get(ctx.tenant_id, id).await?;
         let status = DocStatus::try_from(head.doc_status.as_str())?;
         if !status.can_void() {
             return Err(OutboundError::invalid_transition(&head.doc_status, "void"));
         }
-        self.repo.update_status(head.id, DocStatus::Voided).await
+        self.repo
+            .update_status(ctx.tenant_id, head.id, DocStatus::Voided)
+            .await
     }
 
-    pub async fn get(&self, id: i64) -> Result<OutboundHeadView, AppError> {
-        self.repo.get(id).await
+    pub async fn get(
+        &self,
+        ctx: &AuditContext,
+        id: i64,
+    ) -> Result<OutboundHeadView, AppError> {
+        self.repo.get(ctx.tenant_id, id).await
     }
 
-    pub async fn list(&self, q: &QueryOutbounds) -> Result<Vec<OutboundHeadView>, AppError> {
-        self.repo.list(q).await
+    pub async fn list(
+        &self,
+        ctx: &AuditContext,
+        q: &QueryOutbounds,
+    ) -> Result<Vec<OutboundHeadView>, AppError> {
+        self.repo.list(ctx.tenant_id, q).await
     }
 }
