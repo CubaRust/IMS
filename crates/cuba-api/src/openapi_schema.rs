@@ -309,8 +309,35 @@ pub struct SupplierView {
     pub id: i64,
     pub supplier_code: String,
     pub supplier_name: String,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub is_active: bool,
+    pub remark: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SupplierCreateBody {
+    #[schema(example = "SUP-001")]
+    pub supplier_code: String,
+    #[schema(example = "深圳市XX电子有限公司")]
+    pub supplier_name: String,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub remark: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SupplierUpdateBody {
+    #[schema(example = "深圳市XX电子有限公司")]
+    pub supplier_name: String,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub is_active: bool,
+    pub remark: Option<String>,
+}
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CustomerView {
     pub id: i64,
@@ -364,6 +391,27 @@ pub struct StatusFlowView {
     pub source_status: String,
     pub target_status: String,
     pub scene_code: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CustomerCreateBody {
+    #[schema(example = "CUS-001")]
+    pub customer_code: String,
+    pub customer_name: String,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub remark: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CustomerUpdateBody {
+    pub customer_name: String,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub address: Option<String>,
+    pub is_active: bool,
+    pub remark: Option<String>,
 }
 
 // -- inventory txn -----------------------------------------------------------

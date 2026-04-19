@@ -372,6 +372,7 @@ fn _doc_mat_update() {}
 fn _doc_sup_list() {}
 /// 创建供应商
 #[utoipa::path(post, path = "/api/v1/suppliers", tag = "catalog",
+    request_body = SupplierCreateBody,
     responses((status = 200, body = ApiSuccessEnvelope<SupplierView>)),
     security(("bearer" = [])))]
 #[allow(dead_code)]
@@ -379,6 +380,7 @@ fn _doc_sup_create() {}
 /// 供应商详情
 #[utoipa::path(get, path = "/api/v1/suppliers/{id}", tag = "catalog",
     params(("id" = i64, Path)),
+    request_body = SupplierUpdateBody,
     responses((status = 200, body = ApiSuccessEnvelope<SupplierView>)),
     security(("bearer" = [])))]
 #[allow(dead_code)]
@@ -390,7 +392,18 @@ fn _doc_sup_get() {}
     security(("bearer" = [])))]
 #[allow(dead_code)]
 fn _doc_sup_update() {}
-
+/// 停用供应商(软删除)
+#[utoipa::path(
+    delete,
+    path = "/api/v1/suppliers/{id}", tag = "catalog",
+    params(("id" = i64, Path, description = "供应商 id")),
+    responses(
+        (status = 200, description = "成功",
+         body = crate::openapi_schema::ApiSuccessEnvelope<crate::openapi_schema::VoidData>)
+    ),
+    security(("bearer" = [])))]
+#[allow(dead_code)]
+fn _doc_sup_delete() {}
 /// 客户列表
 #[utoipa::path(get, path = "/api/v1/customers", tag = "catalog",
     responses((status = 200, body = ApiSuccessEnvelope<Vec<CustomerView>>)),
@@ -399,6 +412,7 @@ fn _doc_sup_update() {}
 fn _doc_cust_list() {}
 /// 创建客户
 #[utoipa::path(post, path = "/api/v1/customers", tag = "catalog",
+    request_body = CustomerCreateBody,
     responses((status = 200, body = ApiSuccessEnvelope<CustomerView>)),
     security(("bearer" = [])))]
 #[allow(dead_code)]
@@ -413,6 +427,7 @@ fn _doc_cust_get() {}
 /// 修改客户
 #[utoipa::path(put, path = "/api/v1/customers/{id}", tag = "catalog",
     params(("id" = i64, Path)),
+    request_body = CustomerUpdateBody,
     responses((status = 200, body = ApiSuccessEnvelope<CustomerView>)),
     security(("bearer" = [])))]
 #[allow(dead_code)]
@@ -1073,7 +1088,7 @@ fn _doc_rule_update() {}
         _doc_loc_list, _doc_loc_create, _doc_loc_get, _doc_loc_update,
         // catalog
         _doc_mat_list, _doc_mat_create, _doc_mat_get, _doc_mat_update,
-        _doc_sup_list, _doc_sup_create, _doc_sup_get, _doc_sup_update,
+        _doc_sup_list, _doc_sup_create, _doc_sup_get, _doc_sup_update, _doc_sup_delete,
         _doc_cust_list, _doc_cust_create, _doc_cust_get, _doc_cust_update,
         _doc_bom_list, _doc_bom_create, _doc_bom_get, _doc_bom_recommend,
         _doc_route_list, _doc_route_create, _doc_route_get,
